@@ -1,13 +1,17 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import useGeolocation from "./hooks/useGeolocation.js";
 import useNavigation from "./hooks/useNavigation.js";
 import DriverMap from "./components/DriverMap.jsx";
 import NavigationBanner from "./components/NavigationBanner.jsx";
 import DirectionsList from "./components/DirectionsList.jsx";
 import TaskPanel from "./components/TaskPanel.jsx";
+import MenuDrawer from "./components/MenuDrawer.jsx";
+import ProfilePage from "./components/ProfilePage.jsx";
+import SessionSettings from "./components/SessionSettings.jsx";
 import {
   getDriverTask,
   updateDriver,
+  getProfile,
   acceptTask as apiAccept,
   rejectTask as apiReject,
   startTask as apiStart,
@@ -22,6 +26,16 @@ export default function App() {
   const { position, heading, error: geoError } = useGeolocation();
   const nav = useNavigation(position);
   const pollRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState("main");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [driverProfile, setDriverProfile] = useState(null);
+
+  // Fetch profile on mount
+  useEffect(() => {
+    getProfile(DRIVER_ID)
+      .then(setDriverProfile)
+      .catch(() => {});
+  }, []);
 
   // Poll for task offers when idle
   useEffect(() => {
@@ -131,6 +145,14 @@ export default function App() {
       "AT_DELIVERY",
     ].includes(nav.phase);
 
+  const handleStatusChange = (newStatus) => {
+    setDriverProfile((p) => p ? { ...p, status: newStatus } : p);
+  };
+
+  const handleProfileUpdate = (updates) => {
+    setDriverProfile((p) => p ? { ...p, ...updates } : p);
+  };
+
   if (!position) {
     return <div className="loading-screen">Acquiring location...</div>;
   }
@@ -171,6 +193,40 @@ export default function App() {
         onPickedUp={handlePickedUp}
         onDelivered={handleDelivered}
       />
+
+      {/* Hamburger menu button */}
+      <button className="menu-hamburger" onClick={() => setMenuOpen(true)}>
+        &#9776;
+      </button>
+
+      {/* Slide-out drawer */}
+      {menuOpen && (
+        <MenuDrawer
+          driverId={DRIVER_ID}
+          profile={driverProfile}
+          onClose={() => setMenuOpen(false)}
+          setCurrentPage={setCurrentPage}
+          onStatusChange={handleStatusChange}
+        />
+      )}
+
+      {/* Full-screen overlays */}
+      {currentPage === "profile" && (
+        <ProfilePage
+          driverId={DRIVER_ID}
+          onBack={() => setCurrentPage("main")}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      )}
+
+      {currentPage === "settings" && (
+        <SessionSettings
+          driverId={DRIVER_ID}
+          profile={driverProfile}
+          onBack={() => setCurrentPage("main")}
+          onStatusChange={handleStatusChange}
+        />
+      )}
     </>
   );
 }

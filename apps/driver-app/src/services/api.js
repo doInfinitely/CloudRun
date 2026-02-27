@@ -40,3 +40,68 @@ export function startTask(taskId, driverId) {
 export function completeTask(taskId, driverId) {
   return request("POST", `/tasks/${taskId}/complete?driver_id=${driverId}`, null);
 }
+
+// Upload helper — sends FormData without Content-Type (browser sets multipart boundary)
+async function uploadRequest(path, formData) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`API ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+// Profile
+export function getProfile(driverId) {
+  return request("GET", `/drivers/${driverId}/profile`);
+}
+
+export function updateProfile(driverId, data) {
+  return request("PUT", `/drivers/${driverId}/profile`, data);
+}
+
+export function uploadProfilePhoto(driverId, file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return uploadRequest(`/drivers/${driverId}/profile/photo`, fd);
+}
+
+// Vehicles
+export function getVehicles(driverId) {
+  return request("GET", `/drivers/${driverId}/vehicles`);
+}
+
+export function createVehicle(driverId, data) {
+  return request("POST", `/drivers/${driverId}/vehicles`, data);
+}
+
+export function deleteVehicle(driverId, vehicleId) {
+  return request("DELETE", `/drivers/${driverId}/vehicles/${vehicleId}`);
+}
+
+// Vehicle documents
+export function getVehicleDocuments(driverId, vehicleId) {
+  return request("GET", `/drivers/${driverId}/vehicles/${vehicleId}/documents`);
+}
+
+export function uploadVehicleDocument(driverId, vehicleId, docType, file) {
+  const fd = new FormData();
+  fd.append("doc_type", docType);
+  fd.append("file", file);
+  return uploadRequest(`/drivers/${driverId}/vehicles/${vehicleId}/documents`, fd);
+}
+
+// Driver-level documents (license)
+export function getDriverDocuments(driverId) {
+  return request("GET", `/drivers/${driverId}/documents`);
+}
+
+export function uploadDriverDocument(driverId, docType, file) {
+  const fd = new FormData();
+  fd.append("doc_type", docType);
+  fd.append("file", file);
+  return uploadRequest(`/drivers/${driverId}/documents`, fd);
+}

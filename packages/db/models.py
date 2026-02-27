@@ -31,7 +31,26 @@ class Store(Base):
     status = Column(String, nullable=False, default="ACTIVE")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
+    accepting_orders = Column(Boolean, nullable=False, default=True, server_default="true")
+
     merchant = relationship("Merchant", back_populates="stores")
+    products = relationship("Product", back_populates="store", cascade="all, delete-orphan")
+
+class Product(Base):
+    __tablename__ = "products"
+    id = Column(String, primary_key=True)
+    store_id = Column(String, ForeignKey("stores.id"), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    price_cents = Column(Integer, nullable=False)
+    category = Column(String, nullable=True)
+    image_url = Column(String, nullable=True)
+    is_available = Column(Boolean, nullable=False, default=True)
+    sort_order = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now(), nullable=False)
+
+    store = relationship("Store", back_populates="products")
 
 class Customer(Base):
     __tablename__ = "customers"
@@ -81,6 +100,7 @@ class Order(Base):
     tip_cents = Column(Integer, nullable=False, default=0)
     total_cents = Column(Integer, nullable=False, default=0)
 
+    items_json = Column(JSON, nullable=True)
     payment_status = Column(String, nullable=False, default="UNPAID")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
@@ -125,6 +145,11 @@ class Driver(Base):
     lng = Column(String, nullable=True)
     node_id = Column(String, nullable=True)
     zone_id = Column(String, nullable=True)
+    # profile
+    name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    photo_url = Column(String, nullable=True)
     # eligibility / compliance
     insurance_verified = Column(Boolean, nullable=False, default=False)
     registration_verified = Column(Boolean, nullable=False, default=False)
@@ -135,6 +160,9 @@ class Driver(Base):
     metrics_json = Column(JSON, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now(), nullable=False)
+
+    vehicles = relationship("DriverVehicle", back_populates="driver", cascade="all, delete-orphan")
+    documents = relationship("DriverDocument", back_populates="driver", cascade="all, delete-orphan")
 
 class OfferLog(Base):
     __tablename__ = "offer_logs"
@@ -147,3 +175,34 @@ class OfferLog(Base):
     outcome = Column(String, nullable=True)  # ACCEPTED/REJECTED/TIMEOUT/CANCELED
     outcome_ms = Column(Integer, nullable=True)
     response_latency_ms = Column(Integer, nullable=True)
+
+
+class DriverVehicle(Base):
+    __tablename__ = "driver_vehicles"
+    id = Column(String, primary_key=True)
+    driver_id = Column(String, ForeignKey("drivers.id"), nullable=False)
+    make = Column(String, nullable=False)
+    model = Column(String, nullable=False)
+    year = Column(Integer, nullable=True)
+    color = Column(String, nullable=True)
+    license_plate = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    driver = relationship("Driver", back_populates="vehicles")
+    documents = relationship("DriverDocument", back_populates="vehicle", cascade="all, delete-orphan")
+
+
+class DriverDocument(Base):
+    __tablename__ = "driver_documents"
+    id = Column(String, primary_key=True)
+    driver_id = Column(String, ForeignKey("drivers.id"), nullable=False)
+    vehicle_id = Column(String, ForeignKey("driver_vehicles.id"), nullable=True)
+    doc_type = Column(String, nullable=False)  # LICENSE/INSURANCE/REGISTRATION
+    file_url = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="PENDING")  # PENDING/APPROVED/REJECTED
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    driver = relationship("Driver", back_populates="documents")
+    vehicle = relationship("DriverVehicle", back_populates="documents")

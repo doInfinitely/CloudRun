@@ -11,3 +11,4 @@ httpx>=0.26
 pytest>=8.0
 pytest-asyncio>=0.23
 orjson>=3.9
+python-multipart>=0.0.6
