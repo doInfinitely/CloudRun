@@ -139,6 +139,8 @@ export default function DriverMap({
     targetX: null,
     targetY: null,
     targetRotation: 0,
+    // User interaction tracking
+    userZoomed: false,
   });
 
   // ── Frustum size from zoom ──
@@ -227,6 +229,25 @@ export default function DriverMap({
         s.pulseRing.material.opacity = 0.3 * (1 - Math.sin(s.pulsePhase) * 0.5);
       }
 
+      // Keep labels readable regardless of camera rotation
+      if (s.labelGroup) {
+        const camRot = camera.rotation.z;
+        for (const child of s.labelGroup.children) {
+          if (child.userData.isPlaceLabel) {
+            // Place labels stay horizontal on screen
+            child.rotation.z = camRot;
+          } else if (child.userData.baseAngle !== undefined) {
+            // Street labels flip to avoid being upside-down
+            const base = child.userData.baseAngle;
+            let screenAngle = base - camRot;
+            screenAngle = ((screenAngle + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+            child.rotation.z = (screenAngle > Math.PI / 2 || screenAngle < -Math.PI / 2)
+              ? base + Math.PI
+              : base;
+          }
+        }
+      }
+
       // Smooth camera follow (move camera, not scene)
       if (s.targetX !== null && s.targetY !== null) {
         const dx = s.targetX - camera.position.x;
@@ -254,14 +275,29 @@ export default function DriverMap({
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       s.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, s.zoom + delta));
+      s.userZoomed = true;
       updateFrustum();
     };
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
 
-    // Zoom: pinch (touch)
+    // Zoom: pinch (touch) + double-tap to reset
     let lastPinchDist = null;
+    let wasPinching = false;
+    let lastTapTime = 0;
+
+    const resetView = () => {
+      s.zoom = DEFAULT_ZOOM;
+      s.userZoomed = false;
+      updateFrustum();
+      if (s.targetX !== null) {
+        camera.position.x = s.targetX;
+        camera.position.y = s.targetY;
+      }
+    };
+
     const onTouchStart = (e) => {
       if (e.touches.length === 2) {
+        wasPinching = true;
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         lastPinchDist = Math.sqrt(dx * dx + dy * dy);
@@ -275,13 +311,31 @@ export default function DriverMap({
         const dist = Math.sqrt(dx * dx + dy * dy);
         const delta = (dist - lastPinchDist) * 0.01;
         s.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, s.zoom + delta));
+        s.userZoomed = true;
         updateFrustum();
         lastPinchDist = dist;
       }
     };
-    const onTouchEnd = () => {
+    const onTouchEnd = (e) => {
+      if (e.touches.length === 0) {
+        if (!wasPinching) {
+          const now = Date.now();
+          if (now - lastTapTime < 300) {
+            resetView();
+          }
+          lastTapTime = now;
+        }
+        wasPinching = false;
+      }
       lastPinchDist = null;
     };
+
+    // Double-click for desktop
+    const onDblClick = (e) => {
+      e.preventDefault();
+      resetView();
+    };
+
     renderer.domElement.addEventListener("touchstart", onTouchStart, {
       passive: true,
     });
@@ -291,6 +345,7 @@ export default function DriverMap({
     renderer.domElement.addEventListener("touchend", onTouchEnd, {
       passive: true,
     });
+    renderer.domElement.addEventListener("dblclick", onDblClick);
 
     return () => {
       s.mounted = false;
@@ -300,6 +355,7 @@ export default function DriverMap({
       renderer.domElement.removeEventListener("touchstart", onTouchStart);
       renderer.domElement.removeEventListener("touchmove", onTouchMove);
       renderer.domElement.removeEventListener("touchend", onTouchEnd);
+      renderer.domElement.removeEventListener("dblclick", onDblClick);
       renderer.dispose();
       el.removeChild(renderer.domElement);
     };
@@ -371,9 +427,7 @@ export default function DriverMap({
       const mid = Math.floor(pts.length / 2);
       const p1 = pts[Math.max(0, mid - 1)];
       const p2 = pts[Math.min(pts.length - 1, mid + 1)];
-      let angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-      if (angle > Math.PI / 2) angle -= Math.PI;
-      if (angle < -Math.PI / 2) angle += Math.PI;
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
       const h = 0.25;
       const { tex, aspect } = createTextTexture(road.n, {
@@ -390,6 +444,7 @@ export default function DriverMap({
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(pts[mid].x, pts[mid].y, 0.005);
       mesh.rotation.z = angle;
+      mesh.userData.baseAngle = angle;
       s.labelGroup.add(mesh);
     }
 
@@ -414,6 +469,7 @@ export default function DriverMap({
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(lonToX(place.lon), -latToY(place.lat), 0.015);
+      mesh.userData.isPlaceLabel = true;
       s.labelGroup.add(mesh);
     }
   }, []);
@@ -490,8 +546,8 @@ export default function DriverMap({
     const line = new THREE.Line(geometry, material);
     s.routeGroup.add(line);
 
-    // Fit camera to route bounds on first render
-    if (points.length > 0 && s.camera) {
+    // Fit camera to route bounds — only when user hasn't manually zoomed
+    if (points.length > 0 && s.camera && !s.userZoomed) {
       let minX = Infinity,
         maxX = -Infinity,
         minY = Infinity,
