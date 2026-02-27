@@ -401,9 +401,9 @@ export default function DriverMap({
     const wx = lonToX(position.lng);
     const wy = -latToY(position.lat);
 
-    // Marker size relative to frustum
+    // Marker size relative to frustum, capped so it doesn't get huge when zoomed out
     const frustum = frustumFromZoom(s.zoom);
-    const markerSize = frustum * 0.02;
+    const markerSize = Math.min(frustum * 0.008, frustumFromZoom(16) * 0.008);
 
     if (!s.driverDot) {
       // Blue dot
@@ -508,7 +508,7 @@ export default function DriverMap({
       const wy = -latToY(pickup.lat);
       sprite.position.set(wx, wy, 0.02);
       const frustum = frustumFromZoom(s.zoom);
-      const sz = frustum * 0.03;
+      const sz = Math.min(frustum * 0.012, frustumFromZoom(16) * 0.012);
       sprite.scale.set(sz, sz, 1);
       s.markerGroup.add(sprite);
       s.pickupSprite = sprite;
@@ -535,7 +535,7 @@ export default function DriverMap({
       const wy = -latToY(delivery.lat);
       sprite.position.set(wx, wy, 0.02);
       const frustum = frustumFromZoom(s.zoom);
-      const sz = frustum * 0.03;
+      const sz = Math.min(frustum * 0.012, frustumFromZoom(16) * 0.012);
       sprite.scale.set(sz, sz, 1);
       s.markerGroup.add(sprite);
       s.deliverySprite = sprite;

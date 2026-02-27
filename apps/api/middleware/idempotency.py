@@ -81,19 +81,21 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             except Exception:
                 resp_json = {"_non_json_response": True}
 
-            # Persist idempotency record
-            # Use helper with compute returning current response (we already ran it).
-            def compute():
-                return response.status_code, resp_json
+            # Persist idempotency record if handler didn't already
+            try:
+                def compute():
+                    return response.status_code, resp_json
 
-            idem_get_or_set(
-                db,
-                key=idem_key,
-                route=f"{method}:{path}",
-                request_body=body_json,
-                compute=compute,
-            )
-            db.commit()
+                idem_get_or_set(
+                    db,
+                    key=idem_key,
+                    route=f"{method}:{path}",
+                    request_body=body_json,
+                    compute=compute,
+                )
+                db.commit()
+            except Exception:
+                db.rollback()
 
             return JSONResponse(resp_json, status_code=response.status_code, headers=dict(response.headers))
         finally:
