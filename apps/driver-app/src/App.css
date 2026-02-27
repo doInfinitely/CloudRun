@@ -1,0 +1,301 @@
+:root {
+  --bg-dark: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --accent-blue: #3b82f6;
+  --accent-green: #22c55e;
+  --accent-red: #ef4444;
+  --accent-yellow: #eab308;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+/* Map */
+.driver-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Driver dot */
+.driver-dot {
+  width: 24px;
+  height: 24px;
+  background: var(--accent-blue);
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0.1); }
+}
+
+/* Markers */
+.marker-pickup,
+.marker-delivery {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.marker-pickup {
+  background: var(--accent-green);
+}
+
+.marker-delivery {
+  background: var(--accent-red);
+}
+
+/* Navigation banner */
+.nav-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--bg-dark);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bg-card);
+}
+
+.nav-banner-phase {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-blue);
+  margin-bottom: 4px;
+}
+
+.nav-banner-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.nav-banner-icon {
+  font-size: 36px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.nav-banner-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-banner-distance {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.nav-banner-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Directions list */
+.directions-list {
+  position: absolute;
+  top: 100px;
+  left: 8px;
+  right: 8px;
+  z-index: 900;
+}
+
+.directions-toggle {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.directions-toggle:active {
+  background: var(--bg-card-hover);
+}
+
+.directions-steps {
+  margin-top: 4px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.directions-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.directions-step.current {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.directions-step.past {
+  opacity: 0.4;
+}
+
+.directions-step-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.directions-step-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.directions-step-text {
+  font-size: 14px;
+}
+
+.directions-step-dist {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Task panel */
+.task-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--bg-dark);
+  border-top: 1px solid var(--bg-card);
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+.task-panel.offer {
+  background: var(--bg-dark);
+  border-top: 2px solid var(--accent-blue);
+}
+
+.task-panel.at-location {
+  border-top: 2px solid var(--accent-green);
+}
+
+.task-panel-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.task-panel-status {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 15px;
+  padding: 8px 0;
+}
+
+.task-panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.task-panel-detail {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.detail-label {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.task-panel-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+/* Buttons */
+.btn {
+  flex: 1;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn:active {
+  opacity: 0.8;
+}
+
+.btn-accept {
+  background: var(--accent-green);
+  color: #fff;
+}
+
+.btn-reject {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.btn-pickup {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.btn-deliver {
+  background: var(--accent-green);
+  color: #fff;
+}
+
+/* Error banner */
+.error-banner {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 2000;
+  background: var(--accent-red);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Loading */
+.loading-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+  color: var(--text-secondary);
+  font-size: 16px;
+}
