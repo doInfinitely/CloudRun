@@ -1,1 +1,1 @@
-from . import health, orders, tasks, internal_dispatch, internal_expire, drivers
+from . import health, orders, tasks, internal_dispatch, internal_expire, drivers, merchant

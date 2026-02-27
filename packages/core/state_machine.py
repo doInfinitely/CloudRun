@@ -9,7 +9,8 @@ from .errors import InvalidStateTransition
 ALLOWED = {
     OrderStatus.CREATED: {OrderStatus.VERIFYING_AGE, OrderStatus.CANCELED},
     OrderStatus.VERIFYING_AGE: {OrderStatus.PAYMENT_AUTH, OrderStatus.CANCELED},
-    OrderStatus.PAYMENT_AUTH: {OrderStatus.MERCHANT_ACCEPTED, OrderStatus.CANCELED},
+    OrderStatus.PAYMENT_AUTH: {OrderStatus.PENDING_MERCHANT, OrderStatus.CANCELED},
+    OrderStatus.PENDING_MERCHANT: {OrderStatus.MERCHANT_ACCEPTED, OrderStatus.CANCELED},
     OrderStatus.MERCHANT_ACCEPTED: {OrderStatus.DISPATCHING, OrderStatus.CANCELED},
     OrderStatus.DISPATCHING: {OrderStatus.PICKUP, OrderStatus.CANCELED},
     OrderStatus.PICKUP: {OrderStatus.EN_ROUTE, OrderStatus.CANCELED},

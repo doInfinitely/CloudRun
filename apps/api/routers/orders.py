@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 
 from packages.db.session import get_db
-from packages.db.models import Order, OrderEvent
+from packages.db.models import Order, OrderEvent, Product, Store, CustomerAddress, DeliveryTask, Driver
 from packages.core.enums import OrderStatus
 from packages.core.state_machine import OrderStateMachine
 from packages.dossier.writer import emit_order_event
@@ -26,6 +26,29 @@ def _transition(db: Session, order: Order, to: OrderStatus, *, actor_type="syste
 @router.post("/orders")
 def create_order(body: CreateOrderIn, db: Session = Depends(get_db)):
     order_id = f"ord_{uuid.uuid4().hex}"
+
+    # Look up products and compute real pricing
+    product_ids = [item.product_id for item in body.items]
+    products = {p.id: p for p in db.query(Product).filter(Product.id.in_(product_ids)).all()}
+    subtotal_cents = 0
+    items_detail = []
+    for item in body.items:
+        product = products.get(item.product_id)
+        if not product:
+            raise HTTPException(400, f"product {item.product_id} not found")
+        line_total = product.price_cents * item.quantity
+        subtotal_cents += line_total
+        items_detail.append({
+            "product_id": item.product_id,
+            "quantity": item.quantity,
+            "name": product.name,
+            "price_cents": product.price_cents,
+            "line_total_cents": line_total,
+        })
+    tax_cents = round(subtotal_cents * 0.0825)
+    fees_cents = 299
+    total_cents = subtotal_cents + tax_cents + fees_cents + body.tip_cents
+
     order = Order(
         id=order_id,
         customer_id=body.customer_id,
@@ -34,11 +57,12 @@ def create_order(body: CreateOrderIn, db: Session = Depends(get_db)):
         status=OrderStatus.CREATED.value,
         disclosure_version=body.disclosure_version,
         tip_cents=body.tip_cents,
-        subtotal_cents=0,
-        tax_cents=0,
-        fees_cents=0,
-        total_cents=0,
+        subtotal_cents=subtotal_cents,
+        tax_cents=tax_cents,
+        fees_cents=fees_cents,
+        total_cents=total_cents,
         payment_status="UNPAID",
+        items_json=items_detail,
     )
     db.add(order)
 
@@ -112,8 +136,16 @@ def authorize_payment(order_id: str, body: AuthorizePaymentIn, db: Session = Dep
         db.add(order)
         emit_order_event(db, order_id=order_id, actor_type="system", actor_id="payments", event_type="PAYMENT_AUTHORIZED",
                         payload={"processor": pi["processor"], "payment_intent_id": pi["payment_intent_id"], "amount_cents": pi["amount_cents"]})
-        _transition(db, order, OrderStatus.MERCHANT_ACCEPTED, event_type="ORDER_STATUS_UPDATED")
-        return 200, {"payment_status": order.payment_status, "order_status": order.status}
+        _transition(db, order, OrderStatus.PENDING_MERCHANT, event_type="ORDER_STATUS_UPDATED")
+        # Auto-accept from merchant + dispatch (MVP demo flow)
+        _transition(db, order, OrderStatus.MERCHANT_ACCEPTED, actor_type="merchant", actor_id="auto", event_type="ORDER_STATUS_UPDATED")
+        _transition(db, order, OrderStatus.DISPATCHING, event_type="ORDER_STATUS_UPDATED")
+        # Create delivery task
+        import uuid as _uuid
+        task_id = f"task_{_uuid.uuid4().hex}"
+        db.add(DeliveryTask(id=task_id, order_id=order_id, status="UNASSIGNED", route_json={}))
+        emit_order_event(db, order_id=order_id, actor_type="system", actor_id="dispatch", event_type="TASK_CREATED", payload={"task_id": task_id})
+        return 200, {"payment_status": order.payment_status, "order_status": order.status, "task_id": task_id}
 
     try:
         status_code, resp, replayed = idem_get_or_set(
@@ -272,3 +304,77 @@ def refuse_order(order_id: str, body: RefuseIn, db: Session = Depends(get_db)):
 
     db.commit()
     return {"order_status": order.status, "return_task_id": ret_task_id}
+
+
+@router.get("/orders/{order_id}")
+def get_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.get(Order, order_id)
+    if not order:
+        raise HTTPException(404, "order not found")
+    store = db.get(Store, order.store_id)
+    return {
+        "id": order.id,
+        "customer_id": order.customer_id,
+        "store_id": order.store_id,
+        "store_name": store.name if store else None,
+        "address_id": order.address_id,
+        "status": order.status,
+        "subtotal_cents": order.subtotal_cents,
+        "tax_cents": order.tax_cents,
+        "fees_cents": order.fees_cents,
+        "tip_cents": order.tip_cents,
+        "total_cents": order.total_cents,
+        "items": order.items_json or [],
+        "payment_status": order.payment_status,
+        "created_at": order.created_at.isoformat() if order.created_at else None,
+    }
+
+
+@router.get("/orders/{order_id}/tracking")
+def get_order_tracking(order_id: str, db: Session = Depends(get_db)):
+    order = db.get(Order, order_id)
+    if not order:
+        raise HTTPException(404, "order not found")
+
+    store = db.get(Store, order.store_id)
+    address = db.get(CustomerAddress, order.address_id)
+
+    # Find active delivery task
+    task = (
+        db.query(DeliveryTask)
+        .filter(DeliveryTask.order_id == order_id)
+        .filter(DeliveryTask.status.in_(["OFFERED", "ACCEPTED", "IN_PROGRESS", "COMPLETED"]))
+        .first()
+    )
+
+    driver_info = None
+    if task and task.driver_id:
+        driver = db.get(Driver, task.driver_id)
+        if driver:
+            driver_info = {
+                "id": driver.id,
+                "name": driver.name,
+                "lat": float(driver.lat) if driver.lat else None,
+                "lng": float(driver.lng) if driver.lng else None,
+            }
+
+    return {
+        "order_id": order.id,
+        "status": order.status,
+        "store": {
+            "id": store.id,
+            "name": store.name,
+            "address": store.address,
+            "lat": float(store.lat) if store and store.lat else None,
+            "lng": float(store.lng) if store and store.lng else None,
+        } if store else None,
+        "delivery": {
+            "address": address.address,
+            "lat": float(address.lat) if address and address.lat else None,
+            "lng": float(address.lng) if address and address.lng else None,
+        } if address else None,
+        "driver": driver_info,
+        "task_status": task.status if task else None,
+        "total_cents": order.total_cents,
+        "created_at": order.created_at.isoformat() if order.created_at else None,
+    }
