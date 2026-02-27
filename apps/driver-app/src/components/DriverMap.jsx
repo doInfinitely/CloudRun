@@ -83,6 +83,27 @@ function createMarkerTexture(emoji, bgColor, size = 128) {
   return tex;
 }
 
+// ── Text label texture ──
+function createTextTexture(text, { fontSize = 48, color = "#8899aa", fontWeight = "600" } = {}) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const font = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  ctx.font = font;
+  const metrics = ctx.measureText(text);
+  const pad = fontSize * 0.3;
+  canvas.width = Math.ceil(metrics.width + pad * 2);
+  canvas.height = Math.ceil(fontSize * 1.5);
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return { tex, aspect: canvas.width / canvas.height };
+}
+
 export default function DriverMap({
   position,
   heading,
@@ -100,6 +121,7 @@ export default function DriverMap({
     // Groups
     roadGroup: null,
     routeGroup: null,
+    labelGroup: null,
     markerGroup: null,
     // Driver mesh parts
     driverDot: null,
@@ -186,9 +208,11 @@ export default function DriverMap({
     // Groups for organized layering
     s.roadGroup = new THREE.Group();
     s.routeGroup = new THREE.Group();
+    s.labelGroup = new THREE.Group();
     s.markerGroup = new THREE.Group();
     scene.add(s.roadGroup);
     scene.add(s.routeGroup);
+    scene.add(s.labelGroup);
     scene.add(s.markerGroup);
 
     // Animation loop
@@ -281,6 +305,119 @@ export default function DriverMap({
     };
   }, [frustumFromZoom, updateFrustum]);
 
+  // ── Render roads into the roadGroup ──
+  const renderRoads = useCallback((roads) => {
+    const s = stateRef.current;
+    if (!s.roadGroup) return;
+
+    // Dispose old road meshes
+    while (s.roadGroup.children.length > 0) {
+      const child = s.roadGroup.children[0];
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
+      s.roadGroup.remove(child);
+    }
+
+    for (const road of roads) {
+      const color = ROAD_COLORS[road.h] || ROAD_COLORS.residential;
+      const points = road.p.map(
+        ([lon, lat]) => new THREE.Vector3(lonToX(lon), -latToY(lat), 0)
+      );
+      if (points.length < 2) continue;
+
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const material = new THREE.LineBasicMaterial({
+        color,
+        linewidth: ROAD_WIDTHS[road.h] || 0.5,
+      });
+      const line = new THREE.Line(geometry, material);
+      s.roadGroup.add(line);
+    }
+  }, []);
+
+  // ── Render street + place labels ──
+  const renderLabels = useCallback((roads, places) => {
+    const s = stateRef.current;
+    if (!s.labelGroup) return;
+
+    // Dispose old labels
+    while (s.labelGroup.children.length > 0) {
+      const child = s.labelGroup.children[0];
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        child.material.map?.dispose();
+        child.material.dispose();
+      }
+      s.labelGroup.remove(child);
+    }
+
+    // Street name labels
+    const LABEL_ROADS = new Set([
+      "motorway", "trunk", "primary", "secondary",
+      "tertiary", "residential", "living_street", "unclassified",
+    ]);
+    const seen = new Set();
+
+    for (const road of roads) {
+      if (!road.n || !LABEL_ROADS.has(road.h)) continue;
+      if (seen.has(road.n)) continue;
+      seen.add(road.n);
+
+      const pts = road.p.map(
+        ([lon, lat]) => new THREE.Vector3(lonToX(lon), -latToY(lat), 0)
+      );
+      if (pts.length < 2) continue;
+
+      const mid = Math.floor(pts.length / 2);
+      const p1 = pts[Math.max(0, mid - 1)];
+      const p2 = pts[Math.min(pts.length - 1, mid + 1)];
+      let angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+      if (angle > Math.PI / 2) angle -= Math.PI;
+      if (angle < -Math.PI / 2) angle += Math.PI;
+
+      const h = 0.25;
+      const { tex, aspect } = createTextTexture(road.n, {
+        fontSize: 48,
+        color: "#7799bb",
+      });
+      const geo = new THREE.PlaneGeometry(h * aspect, h);
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        depthTest: false,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(pts[mid].x, pts[mid].y, 0.005);
+      mesh.rotation.z = angle;
+      s.labelGroup.add(mesh);
+    }
+
+    // Place labels (city, town, village, suburb, etc.)
+    const PLACE_CONFIG = {
+      city:          { height: 0.8,  fontSize: 72, color: "#bbccdd", fontWeight: "700" },
+      town:          { height: 0.6,  fontSize: 64, color: "#aabbcc", fontWeight: "700" },
+      village:       { height: 0.45, fontSize: 56, color: "#99aabb", fontWeight: "600" },
+      suburb:        { height: 0.4,  fontSize: 48, color: "#8899aa", fontWeight: "600" },
+      hamlet:        { height: 0.35, fontSize: 48, color: "#8899aa", fontWeight: "600" },
+      neighbourhood: { height: 0.3,  fontSize: 40, color: "#778899", fontWeight: "600" },
+    };
+
+    for (const place of places) {
+      const config = PLACE_CONFIG[place.type] || PLACE_CONFIG.suburb;
+      const { tex, aspect } = createTextTexture(place.name, config);
+      const geo = new THREE.PlaneGeometry(config.height * aspect, config.height);
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        depthTest: false,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(lonToX(place.lon), -latToY(place.lat), 0.015);
+      s.labelGroup.add(mesh);
+    }
+  }, []);
+
   // ── Load roads when position changes ──
   useEffect(() => {
     if (!position) return;
@@ -289,50 +426,42 @@ export default function DriverMap({
 
     let cancelled = false;
 
-    (async () => {
-      const roads = await getRoadsNear(position.lat, position.lng);
+    const fetchAndRender = async (attempt = 0) => {
+      const data = await getRoadsNear(position.lat, position.lng);
       if (cancelled || !s.mounted) return;
-      if (!roads || roads.length === 0) return;
 
-      // Check if we actually got new data (getRoadsNear returns cached if <500m)
-      if (s.lastRoadFetchPos) {
+      const roads = data?.roads || [];
+      const places = data?.places || [];
+
+      if (roads.length === 0) {
+        // Retry once after a short delay (handles StrictMode race where
+        // the first fetch is in-flight and second gets empty cached result)
+        if (attempt === 0 && s.roadGroup.children.length === 0) {
+          setTimeout(() => {
+            if (!cancelled && s.mounted) fetchAndRender(1);
+          }, 2000);
+        }
+        return;
+      }
+
+      // Skip re-render if roads are already drawn and position barely moved
+      if (s.lastRoadFetchPos && s.roadGroup.children.length > 0) {
         const dx = position.lat - s.lastRoadFetchPos[0];
         const dy = position.lng - s.lastRoadFetchPos[1];
         if (Math.abs(dx) < 0.0001 && Math.abs(dy) < 0.0001) return;
       }
 
-      // Dispose old road meshes
-      while (s.roadGroup.children.length > 0) {
-        const child = s.roadGroup.children[0];
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) child.material.dispose();
-        s.roadGroup.remove(child);
-      }
-
-      // Render each road as a Line
-      for (const road of roads) {
-        const color = ROAD_COLORS[road.h] || ROAD_COLORS.residential;
-        const points = road.p.map(
-          ([lon, lat]) => new THREE.Vector3(lonToX(lon), -latToY(lat), 0)
-        );
-        if (points.length < 2) continue;
-
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const material = new THREE.LineBasicMaterial({
-          color,
-          linewidth: ROAD_WIDTHS[road.h] || 0.5,
-        });
-        const line = new THREE.Line(geometry, material);
-        s.roadGroup.add(line);
-      }
-
+      renderRoads(roads);
+      renderLabels(roads, places);
       s.lastRoadFetchPos = [position.lat, position.lng];
-    })();
+    };
+
+    fetchAndRender();
 
     return () => {
       cancelled = true;
     };
-  }, [position]);
+  }, [position, renderRoads, renderLabels]);
 
   // ── Route polyline ──
   useEffect(() => {

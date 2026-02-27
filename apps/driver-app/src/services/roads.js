@@ -70,8 +70,8 @@ function haversineM(lat1, lng1, lat2, lng2) {
 }
 
 /**
- * Fetch roads near a position from Overpass API.
- * Returns array of { h: highway_type, p: [[lon,lat],...], n: name }
+ * Fetch roads and places near a position from Overpass API.
+ * Returns { roads: [{ h, p, n }], places: [{ name, type, lat, lon }] }
  * Skips fetch if driver hasn't moved >500m from last fetch center.
  */
 export async function getRoadsNear(lat, lng, radiusDeg = 0.015) {
@@ -90,14 +90,14 @@ export async function getRoadsNear(lat, lng, radiusDeg = 0.015) {
   }
 
   // Don't fire concurrent requests
-  if (_inflight) return cached?.data || [];
+  if (_inflight) return cached?.data || { roads: [], places: [] };
 
   // Respect backoff from 429
-  if (Date.now() < _backoffUntil) return cached?.data || [];
+  if (Date.now() < _backoffUntil) return cached?.data || { roads: [], places: [] };
 
   // Throttle
   const now = Date.now();
-  if (now - _lastFetchTime < MIN_FETCH_INTERVAL) return cached?.data || [];
+  if (now - _lastFetchTime < MIN_FETCH_INTERVAL) return cached?.data || { roads: [], places: [] };
 
   _inflight = true;
   _lastFetchTime = Date.now();
@@ -110,7 +110,7 @@ export async function getRoadsNear(lat, lng, radiusDeg = 0.015) {
       lng + radiusDeg,
     ];
 
-    const query = `[out:json][timeout:30];(way["highway"~"^(${HIGHWAY_REGEX})$"](${bbox.join(",")}););out body;>;out skel qt;`;
+    const query = `[out:json][timeout:30];(way["highway"~"^(${HIGHWAY_REGEX})$"](${bbox.join(",")});node["place"~"^(city|town|village|suburb|hamlet|neighbourhood)$"](${bbox.join(",")}););out body;>;out skel qt;`;
 
     const resp = await fetch(OVERPASS_URL, {
       method: "POST",
@@ -122,13 +122,13 @@ export async function getRoadsNear(lat, lng, radiusDeg = 0.015) {
       console.warn("[roads] Overpass rate limited, backing off 60s");
       _backoffUntil = Date.now() + 60000;
       _lastCenter = [lat, lng]; // prevent retries from same position
-      return cached?.data || [];
+      return cached?.data || { roads: [], places: [] };
     }
 
     if (!resp.ok) {
       console.warn("[roads] Overpass returned", resp.status);
       _lastCenter = [lat, lng];
-      return cached?.data || [];
+      return cached?.data || { roads: [], places: [] };
     }
 
     const json = await resp.json();
@@ -143,23 +143,33 @@ export async function getRoadsNear(lat, lng, radiusDeg = 0.015) {
 
     // Resolve ways → coordinate arrays
     const roads = [];
+    const places = [];
     for (const el of json.elements) {
-      if (el.type !== "way" || !el.tags?.highway) continue;
-      const coords = el.nodes
-        ?.map((nid) => nodes.get(nid))
-        .filter(Boolean);
-      if (!coords || coords.length < 2) continue;
-      roads.push({
-        h: el.tags.highway,
-        p: coords,
-        n: el.tags.name || "",
-      });
+      if (el.type === "way" && el.tags?.highway) {
+        const coords = el.nodes
+          ?.map((nid) => nodes.get(nid))
+          .filter(Boolean);
+        if (!coords || coords.length < 2) continue;
+        roads.push({
+          h: el.tags.highway,
+          p: coords,
+          n: el.tags.name || "",
+        });
+      } else if (el.type === "node" && el.tags?.place && el.tags?.name) {
+        places.push({
+          name: el.tags.name,
+          type: el.tags.place,
+          lat: el.lat,
+          lon: el.lon,
+        });
+      }
     }
 
-    _cache.set(key, { data: roads, t: Date.now() });
+    const result = { roads, places };
+    _cache.set(key, { data: result, t: Date.now() });
     _lastCenter = [lat, lng];
 
-    return roads;
+    return result;
   } finally {
     _inflight = false;
   }
