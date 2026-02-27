@@ -8,6 +8,9 @@ export default function TaskPanel({
   onReject,
   onPickedUp,
   onDelivered,
+  onVerifyId,
+  onConfirmDelivery,
+  onRefuse,
 }) {
   if (phase === "IDLE") {
     return (
@@ -100,11 +103,71 @@ export default function TaskPanel({
           <div className="task-panel-detail">
             {task?.delivery?.address || "Customer"}
           </div>
+          <div className="task-panel-compliance-note">
+            Customer ID verification required
+          </div>
           <div className="task-panel-actions">
-            <button className="btn btn-deliver" onClick={onDelivered}>
-              Confirm Delivered
+            <button className="btn btn-refuse" onClick={() => onRefuse("NO_ID")}>
+              No ID
+            </button>
+            <button className="btn btn-verify" onClick={onVerifyId}>
+              Verify Customer ID
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "VERIFYING_ID") {
+    return (
+      <div className="task-panel verifying">
+        <div className="task-panel-content">
+          <div className="task-panel-title">Verifying Customer ID...</div>
+          <div className="task-panel-spinner" />
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "ID_VERIFIED") {
+    return (
+      <div className="task-panel at-location">
+        <div className="task-panel-content">
+          <div className="task-panel-title">At Delivery Location</div>
+          <div className="task-panel-verified-badge">
+            Customer identity confirmed
+          </div>
+          <div className="task-panel-actions">
+            <button className="btn btn-deliver" onClick={onConfirmDelivery}>
+              Confirm Delivery
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "RETURNING_TO_STORE") {
+    return (
+      <div className="task-panel returning">
+        <div className="task-panel-content">
+          <div className="task-panel-title">Returning to Store</div>
+          <div className="task-panel-detail">
+            {task?.pickup?.name || "Store"}
+          </div>
+          {route && (
+            <>
+              <div className="task-panel-detail">
+                <span className="detail-label">Distance:</span>{" "}
+                {formatDistance(route.distance)}
+              </div>
+              <div className="task-panel-detail">
+                <span className="detail-label">ETA:</span>{" "}
+                {formatDuration(route.duration)}
+              </div>
+            </>
+          )}
         </div>
       </div>
     );

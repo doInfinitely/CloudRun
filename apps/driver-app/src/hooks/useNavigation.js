@@ -10,7 +10,7 @@ const MANEUVER_THRESHOLD = 30; // meters to consider a maneuver reached
 const ARRIVAL_THRESHOLD = 50; // meters to consider arrived at destination
 
 const initialState = {
-  phase: "IDLE", // IDLE | OFFER_RECEIVED | NAVIGATING_TO_PICKUP | AT_PICKUP | NAVIGATING_TO_DELIVERY | AT_DELIVERY
+  phase: "IDLE", // IDLE | OFFER_RECEIVED | NAVIGATING_TO_PICKUP | AT_PICKUP | NAVIGATING_TO_DELIVERY | AT_DELIVERY | VERIFYING_ID | ID_VERIFIED | RETURNING_TO_STORE
   task: null,
   route: null,
   currentStepIndex: 0,
@@ -20,15 +20,25 @@ const initialState = {
 
 function reducer(state, action) {
   switch (action.type) {
-    case "TASK_RECEIVED":
+    case "TASK_RECEIVED": {
+      // If we already have this task in a later phase, don't reset
+      if (state.task?.id === action.task.id && state.phase !== "IDLE") {
+        return state;
+      }
+      // Map backend task status to the correct nav phase
+      const taskStatus = action.task.status;
+      let phase = "OFFER_RECEIVED";
+      if (taskStatus === "ACCEPTED") phase = "NAVIGATING_TO_PICKUP";
+      else if (taskStatus === "IN_PROGRESS") phase = "NAVIGATING_TO_DELIVERY";
       return {
         ...state,
-        phase: "OFFER_RECEIVED",
+        phase,
         task: action.task,
         route: null,
         currentStepIndex: 0,
         voiceQueue: [],
       };
+    }
 
     case "TASK_ACCEPTED":
       return { ...state, phase: "NAVIGATING_TO_PICKUP" };
@@ -94,6 +104,35 @@ function reducer(state, action) {
         ],
       };
 
+    case "START_ID_CHECK":
+      return { ...state, phase: "VERIFYING_ID" };
+
+    case "ID_CHECK_PASSED":
+      return {
+        ...state,
+        phase: "ID_VERIFIED",
+        voiceQueue: [...state.voiceQueue, "ID verification passed"],
+      };
+
+    case "ID_CHECK_FAILED":
+      return {
+        ...state,
+        phase: "RETURNING_TO_STORE",
+        route: null,
+        voiceQueue: [...state.voiceQueue, "ID verification failed. Return to store."],
+      };
+
+    case "ORDER_REFUSED":
+      return {
+        ...state,
+        phase: "RETURNING_TO_STORE",
+        route: null,
+        voiceQueue: [...state.voiceQueue, "Order refused. Navigate back to store."],
+      };
+
+    case "RETURN_COMPLETE":
+      return { ...initialState };
+
     case "DELIVERED":
       return { ...initialState };
 
@@ -125,6 +164,13 @@ export default function useNavigation(position) {
 
     if (state.phase === "NAVIGATING_TO_DELIVERY" && !state.route) {
       const { lat, lng } = state.task.delivery;
+      getRoute(position.lat, position.lng, lat, lng)
+        .then((route) => dispatch({ type: "ROUTE_LOADED", route }))
+        .catch((e) => console.error("Route fetch failed:", e));
+    }
+
+    if (state.phase === "RETURNING_TO_STORE" && !state.route) {
+      const { lat, lng } = state.task.pickup;
       getRoute(position.lat, position.lng, lat, lng)
         .then((route) => dispatch({ type: "ROUTE_LOADED", route }))
         .catch((e) => console.error("Route fetch failed:", e));
@@ -172,6 +218,12 @@ export default function useNavigation(position) {
       if (toDest < ARRIVAL_THRESHOLD) {
         dispatch({ type: "ARRIVED_DELIVERY" });
       }
+    } else if (state.phase === "RETURNING_TO_STORE") {
+      const { lat, lng } = state.task.pickup;
+      const toDest = haversine(position.lat, position.lng, lat, lng);
+      if (toDest < ARRIVAL_THRESHOLD) {
+        dispatch({ type: "RETURN_COMPLETE" });
+      }
     }
   }, [position, state.route, state.currentStepIndex, state.phase, state.task]);
 
@@ -192,6 +244,26 @@ export default function useNavigation(position) {
     () => dispatch({ type: "DELIVERED" }),
     []
   );
+  const startIdCheck = useCallback(
+    () => dispatch({ type: "START_ID_CHECK" }),
+    []
+  );
+  const idCheckPassed = useCallback(
+    () => dispatch({ type: "ID_CHECK_PASSED" }),
+    []
+  );
+  const idCheckFailed = useCallback(
+    () => dispatch({ type: "ID_CHECK_FAILED" }),
+    []
+  );
+  const refuseDelivery = useCallback(
+    () => dispatch({ type: "ORDER_REFUSED" }),
+    []
+  );
+  const completeReturn = useCallback(
+    () => dispatch({ type: "RETURN_COMPLETE" }),
+    []
+  );
   const dequeueVoice = useCallback(
     () => dispatch({ type: "VOICE_DEQUEUED" }),
     []
@@ -204,6 +276,11 @@ export default function useNavigation(position) {
     rejectOffer,
     confirmPickup,
     confirmDelivery,
+    startIdCheck,
+    idCheckPassed,
+    idCheckFailed,
+    refuseDelivery,
+    completeReturn,
     dequeueVoice,
   };
 }

@@ -16,6 +16,9 @@ import {
   rejectTask as apiReject,
   startTask as apiStart,
   completeTask as apiComplete,
+  doorstepIdCheck as apiDoorstepIdCheck,
+  deliverConfirm as apiDeliverConfirm,
+  refuseOrder as apiRefuseOrder,
 } from "./services/api.js";
 
 // Hardcoded driver ID for now — would come from auth in production
@@ -131,10 +134,45 @@ export default function App() {
     }
   }, [nav.task, nav.confirmDelivery]);
 
+  const handleVerifyId = useCallback(async () => {
+    if (!nav.task) return;
+    nav.startIdCheck();
+    try {
+      await apiDoorstepIdCheck(nav.task.order_id, "pass");
+      nav.idCheckPassed();
+    } catch (e) {
+      console.error("ID check failed:", e);
+      nav.idCheckFailed();
+    }
+  }, [nav.task, nav.startIdCheck, nav.idCheckPassed, nav.idCheckFailed]);
+
+  const handleConfirmDelivery = useCallback(async () => {
+    if (!nav.task) return;
+    const attestationRef = `attest-${nav.task.order_id}-${Date.now()}`;
+    const gps = position ? { lat: position.lat, lng: position.lng } : null;
+    try {
+      await apiDeliverConfirm(nav.task.order_id, attestationRef, gps);
+      nav.confirmDelivery();
+    } catch (e) {
+      console.error("Deliver confirm failed:", e);
+    }
+  }, [nav.task, nav.confirmDelivery, position]);
+
+  const handleRefuse = useCallback(async (reasonCode) => {
+    if (!nav.task) return;
+    const gps = position ? { lat: position.lat, lng: position.lng } : null;
+    try {
+      await apiRefuseOrder(nav.task.order_id, reasonCode, gps);
+      nav.refuseDelivery();
+    } catch (e) {
+      console.error("Refuse failed:", e);
+    }
+  }, [nav.task, nav.refuseDelivery, position]);
+
   // Derive marker positions from current phase
   const showPickup =
     nav.task?.pickup &&
-    ["OFFER_RECEIVED", "NAVIGATING_TO_PICKUP", "AT_PICKUP"].includes(nav.phase);
+    ["OFFER_RECEIVED", "NAVIGATING_TO_PICKUP", "AT_PICKUP", "RETURNING_TO_STORE"].includes(nav.phase);
   const showDelivery =
     nav.task?.delivery &&
     [
@@ -143,6 +181,8 @@ export default function App() {
       "AT_PICKUP",
       "NAVIGATING_TO_DELIVERY",
       "AT_DELIVERY",
+      "VERIFYING_ID",
+      "ID_VERIFIED",
     ].includes(nav.phase);
 
   const handleStatusChange = (newStatus) => {
@@ -192,6 +232,9 @@ export default function App() {
         onReject={handleReject}
         onPickedUp={handlePickedUp}
         onDelivered={handleDelivered}
+        onVerifyId={handleVerifyId}
+        onConfirmDelivery={handleConfirmDelivery}
+        onRefuse={handleRefuse}
       />
 
       {/* Hamburger menu button */}

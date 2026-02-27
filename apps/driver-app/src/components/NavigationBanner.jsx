@@ -6,6 +6,7 @@ const PHASE_LABELS = {
   NAVIGATING_TO_DELIVERY: "Heading to delivery",
   AT_PICKUP: "At pickup",
   AT_DELIVERY: "At delivery",
+  RETURNING_TO_STORE: "Returning to store",
 };
 
 export default function NavigationBanner({

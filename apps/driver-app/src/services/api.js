@@ -41,6 +41,26 @@ export function completeTask(taskId, driverId) {
   return request("POST", `/tasks/${taskId}/complete?driver_id=${driverId}`, null);
 }
 
+export function doorstepIdCheck(orderId, sessionRef) {
+  const idemKey = `doorstep-${orderId}-${Date.now()}`;
+  return request("POST", `/orders/${orderId}/doorstep_id_check/submit`, { session_ref: sessionRef }, {
+    "Idempotency-Key": idemKey,
+  });
+}
+
+export function deliverConfirm(orderId, attestationRef, gps) {
+  const idemKey = `deliver-${orderId}-${Date.now()}`;
+  return request("POST", `/orders/${orderId}/deliver/confirm`, { attestation_ref: attestationRef, gps }, {
+    "Idempotency-Key": idemKey,
+  });
+}
+
+export function refuseOrder(orderId, reasonCode, gps, notes) {
+  const body = { reason_code: reasonCode, gps };
+  if (notes) body.notes = notes;
+  return request("POST", `/orders/${orderId}/refuse`, body);
+}
+
 // Upload helper — sends FormData without Content-Type (browser sets multipart boundary)
 async function uploadRequest(path, formData) {
   const res = await fetch(`${BASE}${path}`, {

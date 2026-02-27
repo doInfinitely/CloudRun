@@ -172,6 +172,14 @@ body {
   border-top: 2px solid var(--accent-green);
 }
 
+.task-panel.verifying {
+  border-top: 2px solid var(--accent-yellow);
+}
+
+.task-panel.returning {
+  border-top: 2px solid var(--accent-red);
+}
+
 .task-panel-content {
   max-width: 500px;
   margin: 0 auto;
@@ -241,6 +249,16 @@ body {
 .btn-deliver {
   background: var(--accent-green);
   color: #fff;
+}
+
+.btn-verify {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.btn-refuse {
+  background: var(--bg-card);
+  color: var(--accent-red);
 }
 
 /* Error banner */
@@ -694,4 +712,32 @@ body {
 .settings-toggle.off {
   background: var(--bg-card);
   color: var(--text-secondary);
+}
+
+/* ========== Compliance ========== */
+.task-panel-compliance-note {
+  font-size: 13px;
+  color: var(--accent-yellow);
+  margin-bottom: 8px;
+}
+
+.task-panel-verified-badge {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-green);
+  margin-bottom: 8px;
+}
+
+.task-panel-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--bg-card);
+  border-top-color: var(--accent-yellow);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 12px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
