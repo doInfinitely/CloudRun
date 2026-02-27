@@ -23,41 +23,11 @@ body {
   z-index: 0;
 }
 
-/* Driver dot */
-.driver-dot {
-  width: 24px;
-  height: 24px;
-  background: var(--accent-blue);
-  border: 3px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3); }
-  50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0.1); }
-}
-
-/* Markers */
-.marker-pickup,
-.marker-delivery {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-.marker-pickup {
-  background: var(--accent-green);
-}
-
-.marker-delivery {
-  background: var(--accent-red);
+/* Three.js canvas */
+.driver-map canvas {
+  display: block;
+  touch-action: none;
+  user-select: none;
 }
 
 /* Navigation banner */

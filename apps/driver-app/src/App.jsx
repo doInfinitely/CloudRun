@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback } from "react";
-import useLeaflet from "./hooks/useLeaflet.js";
 import useGeolocation from "./hooks/useGeolocation.js";
 import useNavigation from "./hooks/useNavigation.js";
 import DriverMap from "./components/DriverMap.jsx";
@@ -20,7 +19,6 @@ const DRIVER_ID = "drv_demo_001";
 const POLL_INTERVAL = 5000;
 
 export default function App() {
-  const leafletReady = useLeaflet();
   const { position, heading, error: geoError } = useGeolocation();
   const nav = useNavigation(position);
   const pollRef = useRef(null);
@@ -133,14 +131,13 @@ export default function App() {
       "AT_DELIVERY",
     ].includes(nav.phase);
 
-  if (!leafletReady) {
-    return <div className="loading-screen">Loading map...</div>;
+  if (!position) {
+    return <div className="loading-screen">Acquiring location...</div>;
   }
 
   return (
     <>
       <DriverMap
-        leafletReady={leafletReady}
         position={position}
         heading={heading}
         pickup={showPickup ? nav.task.pickup : null}

@@ -1,10 +1,89 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
+import * as THREE from "three";
+import { lonToX, latToY, WORLD_SCALE, getRoadsNear } from "../services/roads.js";
 
-const TILES_URL =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+// Car marker images (all face right in the source image)
+import carImg1 from "../assets/car-markers/cloudrun_car_marker_masked_1.png";
+import carImg2 from "../assets/car-markers/cloudrun_car_marker_masked_2.png";
+import carImg3 from "../assets/car-markers/cloudrun_car_marker_masked_3.png";
+import carImg4 from "../assets/car-markers/cloudrun_car_marker_masked_4.png";
+import carImg5 from "../assets/car-markers/cloudrun_car_marker_masked_5.png";
+import carImg6 from "../assets/car-markers/cloudrun_car_marker_masked_6.png";
+
+const CAR_IMAGES = [carImg1, carImg2, carImg3, carImg4, carImg5, carImg6];
+const DEFAULT_CAR_INDEX = 0; // blue car
+
+// ── Road color tiers ──
+const ROAD_COLORS = {
+  motorway: "#8899aa",
+  motorway_link: "#8899aa",
+  trunk: "#778899",
+  trunk_link: "#7788aa",
+  primary: "#667788",
+  primary_link: "#667788",
+  secondary: "#556677",
+  secondary_link: "#556677",
+  tertiary: "#445566",
+  tertiary_link: "#445566",
+  residential: "#334455",
+  living_street: "#334455",
+  unclassified: "#334455",
+  service: "#2a3a4a",
+};
+
+const ROAD_WIDTHS = {
+  motorway: 2.5,
+  motorway_link: 1.8,
+  trunk: 2.2,
+  trunk_link: 1.6,
+  primary: 1.8,
+  primary_link: 1.2,
+  secondary: 1.4,
+  secondary_link: 1.0,
+  tertiary: 1.0,
+  tertiary_link: 0.8,
+  residential: 0.6,
+  living_street: 0.5,
+  unclassified: 0.5,
+  service: 0.4,
+};
+
+const CLEAR_COLOR = "#0a0e17";
+const ROUTE_COLOR = "#3b82f6";
+const DRIVER_COLOR = "#3b82f6";
+
+const DEFAULT_ZOOM = 16;
+const MIN_ZOOM = 12;
+const MAX_ZOOM = 19;
+
+// ── Emoji marker canvas texture ──
+function createMarkerTexture(emoji, bgColor, size = 128) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  // Circle background
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2);
+  ctx.fillStyle = bgColor;
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Emoji
+  ctx.font = `${size * 0.5}px serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(emoji, size / 2, size / 2 + 2);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
 
 export default function DriverMap({
-  leafletReady,
   position,
   heading,
   pickup,
@@ -12,128 +91,456 @@ export default function DriverMap({
   routeGeometry,
 }) {
   const containerRef = useRef(null);
-  const mapRef = useRef(null);
-  const driverMarkerRef = useRef(null);
-  const pickupMarkerRef = useRef(null);
-  const deliveryMarkerRef = useRef(null);
-  const polylineRef = useRef(null);
+  const stateRef = useRef({
+    renderer: null,
+    scene: null,
+    camera: null,
+    zoom: DEFAULT_ZOOM,
+    animId: null,
+    // Groups
+    roadGroup: null,
+    routeGroup: null,
+    markerGroup: null,
+    // Driver mesh parts
+    driverDot: null,
+    driverRing: null,
+    pulseRing: null,
+    // Marker sprites
+    pickupSprite: null,
+    deliverySprite: null,
+    // Tracking
+    lastRoadFetchPos: null,
+    mounted: true,
+    // Pulse animation
+    pulsePhase: 0,
+    // Smooth camera
+    targetX: null,
+    targetY: null,
+    targetRotation: 0,
+  });
 
-  // Init map
+  // ── Frustum size from zoom ──
+  const frustumFromZoom = useCallback((zoom) => {
+    return WORLD_SCALE / Math.pow(2, zoom);
+  }, []);
+
+  // ── Update camera frustum ──
+  const updateFrustum = useCallback(() => {
+    const s = stateRef.current;
+    if (!s.camera || !s.renderer) return;
+    const frustum = frustumFromZoom(s.zoom);
+    const aspect =
+      s.renderer.domElement.width / s.renderer.domElement.height;
+    s.camera.left = (-frustum * aspect) / 2;
+    s.camera.right = (frustum * aspect) / 2;
+    s.camera.top = frustum / 2;
+    s.camera.bottom = -frustum / 2;
+    s.camera.updateProjectionMatrix();
+  }, [frustumFromZoom]);
+
+  // ── Scene setup ──
   useEffect(() => {
-    if (!leafletReady || !containerRef.current || mapRef.current) return;
-    const L = window.L;
+    const el = containerRef.current;
+    if (!el) return;
+    const s = stateRef.current;
 
-    const map = L.map(containerRef.current, {
-      center: [37.7749, -122.4194], // default SF
-      zoom: 15,
-      zoomControl: false,
-      attributionControl: false,
+    // Reset state for StrictMode remount
+    s.mounted = true;
+    s.driverDot = null;
+    s.driverRing = null;
+    s.pulseRing = null;
+    s.pickupSprite = null;
+    s.deliverySprite = null;
+    s.lastRoadFetchPos = null;
+    s.targetX = null;
+    s.targetY = null;
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setClearColor(CLEAR_COLOR);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(el.clientWidth, el.clientHeight);
+    el.appendChild(renderer.domElement);
+    s.renderer = renderer;
+
+    // Scene
+    const scene = new THREE.Scene();
+    s.scene = scene;
+
+    // Orthographic camera (top-down, Y is up in Three.js)
+    const frustum = frustumFromZoom(s.zoom);
+    const aspect = el.clientWidth / el.clientHeight;
+    const camera = new THREE.OrthographicCamera(
+      (-frustum * aspect) / 2,
+      (frustum * aspect) / 2,
+      frustum / 2,
+      -frustum / 2,
+      0.1,
+      100
+    );
+    // Look straight down (camera at Z=10, looking at Z=0 plane)
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+    s.camera = camera;
+
+    // Groups for organized layering
+    s.roadGroup = new THREE.Group();
+    s.routeGroup = new THREE.Group();
+    s.markerGroup = new THREE.Group();
+    scene.add(s.roadGroup);
+    scene.add(s.routeGroup);
+    scene.add(s.markerGroup);
+
+    // Animation loop
+    const animate = () => {
+      if (!s.mounted) return;
+
+      // Pulse animation
+      s.pulsePhase += 0.03;
+      if (s.pulseRing) {
+        const scale = 1 + 0.8 * Math.sin(s.pulsePhase);
+        s.pulseRing.scale.set(scale, scale, 1);
+        s.pulseRing.material.opacity = 0.3 * (1 - Math.sin(s.pulsePhase) * 0.5);
+      }
+
+      // Smooth camera follow (move camera, not scene)
+      if (s.targetX !== null && s.targetY !== null) {
+        const dx = s.targetX - camera.position.x;
+        const dy = s.targetY - camera.position.y;
+        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+          camera.position.x += dx * 0.1;
+          camera.position.y += dy * 0.1;
+        }
+      }
+
+      renderer.render(scene, camera);
+      s.animId = requestAnimationFrame(animate);
+    };
+    s.animId = requestAnimationFrame(animate);
+
+    // Resize handler
+    const onResize = () => {
+      renderer.setSize(el.clientWidth, el.clientHeight);
+      updateFrustum();
+    };
+    window.addEventListener("resize", onResize);
+
+    // Zoom: mouse wheel
+    const onWheel = (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      s.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, s.zoom + delta));
+      updateFrustum();
+    };
+    renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+
+    // Zoom: pinch (touch)
+    let lastPinchDist = null;
+    const onTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastPinchDist = Math.sqrt(dx * dx + dy * dy);
+      }
+    };
+    const onTouchMove = (e) => {
+      if (e.touches.length === 2 && lastPinchDist !== null) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const delta = (dist - lastPinchDist) * 0.01;
+        s.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, s.zoom + delta));
+        updateFrustum();
+        lastPinchDist = dist;
+      }
+    };
+    const onTouchEnd = () => {
+      lastPinchDist = null;
+    };
+    renderer.domElement.addEventListener("touchstart", onTouchStart, {
+      passive: true,
+    });
+    renderer.domElement.addEventListener("touchmove", onTouchMove, {
+      passive: false,
+    });
+    renderer.domElement.addEventListener("touchend", onTouchEnd, {
+      passive: true,
     });
 
-    L.tileLayer(TILES_URL, {
-      maxZoom: 19,
-      subdomains: "abcd",
-    }).addTo(map);
+    return () => {
+      s.mounted = false;
+      cancelAnimationFrame(s.animId);
+      window.removeEventListener("resize", onResize);
+      renderer.domElement.removeEventListener("wheel", onWheel);
+      renderer.domElement.removeEventListener("touchstart", onTouchStart);
+      renderer.domElement.removeEventListener("touchmove", onTouchMove);
+      renderer.domElement.removeEventListener("touchend", onTouchEnd);
+      renderer.dispose();
+      el.removeChild(renderer.domElement);
+    };
+  }, [frustumFromZoom, updateFrustum]);
 
-    mapRef.current = map;
+  // ── Load roads when position changes ──
+  useEffect(() => {
+    if (!position) return;
+    const s = stateRef.current;
+    if (!s.scene) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const roads = await getRoadsNear(position.lat, position.lng);
+      if (cancelled || !s.mounted) return;
+      if (!roads || roads.length === 0) return;
+
+      // Check if we actually got new data (getRoadsNear returns cached if <500m)
+      if (s.lastRoadFetchPos) {
+        const dx = position.lat - s.lastRoadFetchPos[0];
+        const dy = position.lng - s.lastRoadFetchPos[1];
+        if (Math.abs(dx) < 0.0001 && Math.abs(dy) < 0.0001) return;
+      }
+
+      // Dispose old road meshes
+      while (s.roadGroup.children.length > 0) {
+        const child = s.roadGroup.children[0];
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+        s.roadGroup.remove(child);
+      }
+
+      // Render each road as a Line
+      for (const road of roads) {
+        const color = ROAD_COLORS[road.h] || ROAD_COLORS.residential;
+        const points = road.p.map(
+          ([lon, lat]) => new THREE.Vector3(lonToX(lon), -latToY(lat), 0)
+        );
+        if (points.length < 2) continue;
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({
+          color,
+          linewidth: ROAD_WIDTHS[road.h] || 0.5,
+        });
+        const line = new THREE.Line(geometry, material);
+        s.roadGroup.add(line);
+      }
+
+      s.lastRoadFetchPos = [position.lat, position.lng];
+    })();
 
     return () => {
-      map.remove();
-      mapRef.current = null;
+      cancelled = true;
     };
-  }, [leafletReady]);
-
-  // Update driver marker
-  useEffect(() => {
-    if (!mapRef.current || !position) return;
-    const L = window.L;
-    const { lat, lng } = position;
-
-    if (!driverMarkerRef.current) {
-      const icon = L.divIcon({
-        className: "",
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-        html: `<div class="driver-dot"></div>`,
-      });
-      driverMarkerRef.current = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(
-        mapRef.current
-      );
-      mapRef.current.setView([lat, lng], 16);
-    } else {
-      driverMarkerRef.current.setLatLng([lat, lng]);
-      mapRef.current.panTo([lat, lng]);
-    }
   }, [position]);
 
-  // Update pickup marker
+  // ── Route polyline ──
   useEffect(() => {
-    if (!mapRef.current) return;
-    const L = window.L;
+    const s = stateRef.current;
+    if (!s.scene) return;
 
-    if (pickupMarkerRef.current) {
-      pickupMarkerRef.current.remove();
-      pickupMarkerRef.current = null;
+    // Dispose old route
+    while (s.routeGroup.children.length > 0) {
+      const child = s.routeGroup.children[0];
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
+      s.routeGroup.remove(child);
+    }
+
+    if (!routeGeometry || routeGeometry.length < 2) return;
+
+    const points = routeGeometry.map(
+      ([lat, lng]) => new THREE.Vector3(lonToX(lng), -latToY(lat), 0.01)
+    );
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color: ROUTE_COLOR,
+      linewidth: 2,
+    });
+    const line = new THREE.Line(geometry, material);
+    s.routeGroup.add(line);
+
+    // Fit camera to route bounds on first render
+    if (points.length > 0 && s.camera) {
+      let minX = Infinity,
+        maxX = -Infinity,
+        minY = Infinity,
+        maxY = -Infinity;
+      for (const p of points) {
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+      }
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      const rangeX = maxX - minX;
+      const rangeY = maxY - minY;
+      const range = Math.max(rangeX, rangeY) * 1.5;
+
+      // Compute zoom from range
+      if (range > 0) {
+        const newZoom = Math.log2(WORLD_SCALE / range);
+        s.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+        updateFrustum();
+      }
+
+      s.camera.position.x = cx;
+      s.camera.position.y = cy;
+      s.targetX = cx;
+      s.targetY = cy;
+    }
+  }, [routeGeometry, updateFrustum]);
+
+  // ── Driver marker ──
+  useEffect(() => {
+    const s = stateRef.current;
+    if (!s.scene || !position) return;
+
+    const wx = lonToX(position.lng);
+    const wy = -latToY(position.lat);
+
+    // Marker size relative to frustum
+    const frustum = frustumFromZoom(s.zoom);
+    const markerSize = frustum * 0.02;
+
+    if (!s.driverDot) {
+      // Blue dot
+      const dotGeo = new THREE.CircleGeometry(markerSize * 0.6, 32);
+      const dotMat = new THREE.MeshBasicMaterial({ color: DRIVER_COLOR });
+      s.driverDot = new THREE.Mesh(dotGeo, dotMat);
+      s.driverDot.position.set(wx, wy, 0.02);
+      s.markerGroup.add(s.driverDot);
+
+      // White ring
+      const ringGeo = new THREE.RingGeometry(
+        markerSize * 0.6,
+        markerSize * 0.8,
+        32
+      );
+      const ringMat = new THREE.MeshBasicMaterial({ color: "#ffffff" });
+      s.driverRing = new THREE.Mesh(ringGeo, ringMat);
+      s.driverRing.position.set(wx, wy, 0.02);
+      s.markerGroup.add(s.driverRing);
+
+      // Pulse ring
+      const pulseGeo = new THREE.RingGeometry(
+        markerSize * 0.8,
+        markerSize * 1.1,
+        32
+      );
+      const pulseMat = new THREE.MeshBasicMaterial({
+        color: DRIVER_COLOR,
+        transparent: true,
+        opacity: 0.3,
+      });
+      s.pulseRing = new THREE.Mesh(pulseGeo, pulseMat);
+      s.pulseRing.position.set(wx, wy, 0.019);
+      s.markerGroup.add(s.pulseRing);
+    } else {
+      // Update positions
+      s.driverDot.position.x = wx;
+      s.driverDot.position.y = wy;
+      s.driverRing.position.x = wx;
+      s.driverRing.position.y = wy;
+      s.pulseRing.position.x = wx;
+      s.pulseRing.position.y = wy;
+
+      // Resize for zoom
+      const dotGeo = new THREE.CircleGeometry(markerSize * 0.6, 32);
+      s.driverDot.geometry.dispose();
+      s.driverDot.geometry = dotGeo;
+
+      const ringGeo = new THREE.RingGeometry(
+        markerSize * 0.6,
+        markerSize * 0.8,
+        32
+      );
+      s.driverRing.geometry.dispose();
+      s.driverRing.geometry = ringGeo;
+
+      const pulseGeo = new THREE.RingGeometry(
+        markerSize * 0.8,
+        markerSize * 1.1,
+        32
+      );
+      s.pulseRing.geometry.dispose();
+      s.pulseRing.geometry = pulseGeo;
+    }
+
+    // Camera follow — snap on first position, lerp after
+    if (s.targetX === null) {
+      s.camera.position.x = wx;
+      s.camera.position.y = wy;
+    }
+    s.targetX = wx;
+    s.targetY = wy;
+  }, [position, frustumFromZoom]);
+
+  // ── Heading rotation ──
+  useEffect(() => {
+    const s = stateRef.current;
+    if (!s.camera || heading == null) return;
+    // Only rotate when speed > ~1m/s (heading is unreliable when stationary)
+    if (position?.speed != null && position.speed < 1) return;
+    // Rotate camera around its viewing axis (Z) so forward = up
+    s.camera.rotation.z = (-heading * Math.PI) / 180;
+  }, [heading, position?.speed]);
+
+  // ── Pickup marker ──
+  useEffect(() => {
+    const s = stateRef.current;
+    if (!s.scene) return;
+
+    if (s.pickupSprite) {
+      s.pickupSprite.material.map?.dispose();
+      s.pickupSprite.material.dispose();
+      s.markerGroup.remove(s.pickupSprite);
+      s.pickupSprite = null;
     }
 
     if (pickup) {
-      const icon = L.divIcon({
-        className: "",
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        html: `<div class="marker-pickup">🏪</div>`,
-      });
-      pickupMarkerRef.current = L.marker([pickup.lat, pickup.lng], { icon }).addTo(
-        mapRef.current
-      );
+      const tex = createMarkerTexture("🏪", "#22c55e");
+      const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+      const sprite = new THREE.Sprite(mat);
+      const wx = lonToX(pickup.lng);
+      const wy = -latToY(pickup.lat);
+      sprite.position.set(wx, wy, 0.02);
+      const frustum = frustumFromZoom(s.zoom);
+      const sz = frustum * 0.03;
+      sprite.scale.set(sz, sz, 1);
+      s.markerGroup.add(sprite);
+      s.pickupSprite = sprite;
     }
-  }, [pickup]);
+  }, [pickup, frustumFromZoom]);
 
-  // Update delivery marker
+  // ── Delivery marker ──
   useEffect(() => {
-    if (!mapRef.current) return;
-    const L = window.L;
+    const s = stateRef.current;
+    if (!s.scene) return;
 
-    if (deliveryMarkerRef.current) {
-      deliveryMarkerRef.current.remove();
-      deliveryMarkerRef.current = null;
+    if (s.deliverySprite) {
+      s.deliverySprite.material.map?.dispose();
+      s.deliverySprite.material.dispose();
+      s.markerGroup.remove(s.deliverySprite);
+      s.deliverySprite = null;
     }
 
     if (delivery) {
-      const icon = L.divIcon({
-        className: "",
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        html: `<div class="marker-delivery">📍</div>`,
-      });
-      deliveryMarkerRef.current = L.marker([delivery.lat, delivery.lng], { icon }).addTo(
-        mapRef.current
-      );
+      const tex = createMarkerTexture("📍", "#ef4444");
+      const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+      const sprite = new THREE.Sprite(mat);
+      const wx = lonToX(delivery.lng);
+      const wy = -latToY(delivery.lat);
+      sprite.position.set(wx, wy, 0.02);
+      const frustum = frustumFromZoom(s.zoom);
+      const sz = frustum * 0.03;
+      sprite.scale.set(sz, sz, 1);
+      s.markerGroup.add(sprite);
+      s.deliverySprite = sprite;
     }
-  }, [delivery]);
-
-  // Update route polyline
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const L = window.L;
-
-    if (polylineRef.current) {
-      polylineRef.current.remove();
-      polylineRef.current = null;
-    }
-
-    if (routeGeometry && routeGeometry.length > 0) {
-      polylineRef.current = L.polyline(routeGeometry, {
-        color: "#3b82f6",
-        weight: 5,
-        opacity: 0.8,
-      }).addTo(mapRef.current);
-
-      mapRef.current.fitBounds(polylineRef.current.getBounds(), {
-        padding: [60, 60],
-      });
-    }
-  }, [routeGeometry]);
+  }, [delivery, frustumFromZoom]);
 
   return <div ref={containerRef} className="driver-map" />;
 }
