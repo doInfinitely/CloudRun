@@ -1,0 +1,11 @@
+.git
+.venv
+__pycache__
+*.pyc
+node_modules
+.pytest_cache
+dump.rdb
+*.png
+TRANSCRIPT.md
+FINAL_TRANSCRIPT.md
+.env

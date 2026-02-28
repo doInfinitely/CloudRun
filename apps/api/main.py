@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from apps.api.middleware.idempotency import IdempotencyMiddleware
+from apps.api.middleware.auth import AuthMiddleware
+from apps.api.middleware.rate_limit import RateLimitMiddleware
 from apps.api.routers import health, orders, dossier, tasks, drivers, internal_expire
 from apps.api.routers import profile, vehicles, merchant, stores, customers
 from apps.api.routers import support, admin
@@ -15,6 +17,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(AuthMiddleware)
 app.add_middleware(IdempotencyMiddleware)
 
 app.include_router(health.router, prefix="/v1")
