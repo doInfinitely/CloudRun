@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from packages.db.models import DeliveryTask, OfferLog
 from packages.dossier.writer import emit_order_event
 
-def create_offer(db: Session, *, order_id: str, driver_id: str, offer_ttl_s: int) -> DeliveryTask:
+def create_offer(db: Session, *, snapshot: dict, order_id: str, driver_id: str, offer_ttl_s: int, edge_debug: dict | None = None) -> DeliveryTask:
     import uuid
     task_id = f"task_{uuid.uuid4().hex}"
     task = DeliveryTask(
