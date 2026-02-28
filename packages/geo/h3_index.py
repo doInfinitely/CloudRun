@@ -20,6 +20,7 @@ class DriverH3Index:
     def __init__(self, *, res: int = 8):
         self.res = res
         self.map: Dict[str, List[dict]] = {}
+        self._h3_available: bool = True
 
     def build(self, drivers: Iterable[dict]) -> None:
         self.map.clear()
@@ -29,12 +30,21 @@ class DriverH3Index:
                 continue
             try:
                 cell = h3_cell(float(lat), float(lng), self.res)
+            except ImportError:
+                self._h3_available = False
+                return
             except Exception:
                 continue
             self.map.setdefault(cell, []).append(d)
 
     def query_ring(self, lat: float, lng: float, k: int) -> List[dict]:
-        cells = h3_ring_cells(lat, lng, self.res, k)
+        if not self._h3_available:
+            return []
+        try:
+            cells = h3_ring_cells(lat, lng, self.res, k)
+        except (ImportError, Exception):
+            self._h3_available = False
+            return []
         out: List[dict] = []
         for c in cells:
             out.extend(self.map.get(c, []))

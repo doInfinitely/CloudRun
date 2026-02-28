@@ -52,13 +52,13 @@ def generate_candidates_topk(snapshot: dict, *, k_prime: int = 100, k: int = 20)
         jlat = float(jlat); jlng = float(jlng)
 
         candidate_drivers = []
-        if h3_index is not None:
+        if h3_index is not None and h3_index._h3_available:
             # Expand rings until we have enough candidates (k_prime) or we hit ring cap
             for ring in range(0, 6):
                 candidate_drivers = h3_index.query_ring(jlat, jlng, ring)
                 if len(candidate_drivers) >= k_prime or ring == 5:
                     break
-        else:
+        if not candidate_drivers:
             candidate_drivers = drivers
 
         scored = []
