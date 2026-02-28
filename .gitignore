@@ -6,3 +6,6 @@ __pycache__/
 node_modules/
 dist/
 .DS_Store
+dump.rdb
+.pytest_cache/
+*.egg-info/

@@ -1,135 +1,149 @@
-# Vape Marketplace MVP (Texas-first) — FastAPI + Postgres
+# CloudRun — Age-Restricted Marketplace with Last-Mile Dispatch
 
-**Model A:** Merchant is seller of record. Platform handles order-taking + delivery orchestration with hard compliance gates:
-- Age verification at **checkout**
-- ID verification at **doorstep**
-- **No leave-at-door**
-- Append-only **Order Dossier** (hash-chained)
+**Model A marketplace** for age-restricted products (vape) with compliance-first architecture and real-time dispatch orchestration. Texas-first deployment.
 
-## What’s included
-- FastAPI API app (`apps/api`)
-- Celery worker (`apps/worker`)
-- SQLAlchemy 2.0 models + Alembic migrations (`packages/db`)
-- Domain + state machines (`packages/core`)
-- Dossier event writer with hash chaining (`packages/dossier`)
-- Verification orchestrator with a **fake IDV vendor** for local testing (`packages/verification`)
-- Dispatch stubs + OR-Tools wrapper placeholder (`packages/dispatch`)
-- Pytest “Texas-first” QA scenarios (`tests/qa`)
+## Architecture
 
-## Quickstart (local)
-### 1) Create venv & install
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+```
+apps/
+  api/          FastAPI backend (50+ endpoints)
+  worker/       Celery beat + worker (dispatch tick, offer expiry, batch loop)
+  customer-app/ React storefront (Vite, port 5173)
+  merchant-app/ React merchant dashboard (Vite, port 5174)
+  driver-app/   React driver app with 3D map (Vite, port 5175)
+  mission-control/ React admin dashboard (Vite, port 5176)
+  dispatcher/   Standalone dispatch tick runner
+
+packages/
+  core/         Enums, state machine, domain errors
+  db/           SQLAlchemy 2.0 models (17 tables), session config
+  dispatch/     FAST + BATCH matching loops, MCF solver, offer management
+  dossier/      Hash-chained order event audit trail
+  verification/ Age/ID verification (fake + Onfido)
+  payments/     Payment processing (fake + Stripe)
+  router/       Travel time routing (haversine + OSRM)
+  geo/          H3 geospatial indexing
+  predictions/  Driver acceptance probability heuristic
+  notifications/ Push/SMS notification dispatcher (console + Twilio)
+  common/       Crypto, Redis, idempotency utilities
+
+tests/
+  unit/         48 unit tests (dispatch, state machine, router, payments, verification)
+  integration/  End-to-end order flow tests
+  qa/           Texas compliance scenarios
 ```
 
-### 2) Run Postgres (docker)
+## Compliance Gates
+- Age verification at **checkout** (fake vendor or Onfido)
+- ID verification at **doorstep** (driver-submitted)
+- **No leave-at-door** — delivery requires confirmation
+- Append-only **Order Dossier** with SHA-256 hash chaining
+- Idempotent state transitions with DB replay
+
+## Quickstart
+
+### 1. Install
 ```bash
-docker compose up -d db redis
+make install
+# or: python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+cp .env.example .env
 ```
 
-### 3) Run migrations
+### 2. Start services
 ```bash
-alembic upgrade head
+make db          # Postgres + Redis via Docker
+make migrate     # Run Alembic migrations
+make seed        # Seed demo data (merchant, stores, products, customer)
 ```
 
-### 4) Start API
+### 3. Run
 ```bash
-uvicorn apps.api.main:app --reload --port 8000
+make api         # API on :8000 (Swagger at /docs, ReDoc at /redoc)
+make worker      # Celery beat + worker (dispatch every 3s, expiry every 15s, batch every 30s)
+make merchant    # Merchant dashboard on :5174
+make customer    # Customer storefront on :5173
+make driver      # Driver app on :5175
+make mission     # Admin dashboard on :5176
 ```
 
-### 5) Run tests
+### 4. Test
 ```bash
-pytest -q
+make test        # 48 unit tests
+make itest       # Integration tests (requires running Postgres + Redis)
 ```
 
-## Environment variables
-Copy `.env.example` → `.env` and adjust as needed.
+## API Documentation
 
-## Notes
-- The included Fake IDV vendor makes it easy to test pass/fail behavior without a real provider.
-- Evidence refs are stored as *tokens/pointers* only; no raw ID images are stored by design.
+Start the API and visit:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
 
+### Key Endpoints
 
-## Extensions added
-### Idempotency
-Mutating endpoints require `Idempotency-Key` header:
-- POST `/v1/orders/{id}/verify_age`
-- POST `/v1/orders/{id}/payment/authorize`
-- POST `/v1/orders/{id}/doorstep_id_check/submit`
-- POST `/v1/orders/{id}/deliver/confirm`
-- POST `/v1/tasks/{id}/accept`
+| Category | Endpoint | Description |
+|----------|----------|-------------|
+| Customer | `POST /v1/orders` | Create order |
+| Customer | `POST /v1/orders/{id}/verify_age` | Age verification gate |
+| Customer | `POST /v1/orders/{id}/payment/authorize` | Payment authorization |
+| Driver | `GET /v1/drivers/{id}/task` | Poll for offered task |
+| Driver | `POST /v1/tasks/{id}/accept` | Accept task offer |
+| Driver | `POST /v1/orders/{id}/doorstep_id_check/submit` | Doorstep ID check |
+| Driver | `POST /v1/orders/{id}/deliver/confirm` | Confirm delivery |
+| Merchant | `GET /v1/merchants/{id}/dashboard` | Dashboard metrics |
+| Merchant | `POST /v1/merchants/{id}/stores/{sid}/orders/{oid}/action` | Accept/reject order |
+| Admin | `GET /v1/admin/dashboard` | Platform-wide metrics |
+| Admin | `POST /v1/admin/merchants/{id}/review` | Approve/reject merchant |
+| Admin | `GET /v1/admin/analytics/orders` | Order analytics |
+| Internal | `POST /internal/dispatch/tick` | Manual dispatch trigger |
 
-Responses are stored in Postgres (`idempotency_keys`) keyed by route + idempotency key.
+## Dispatch System
 
-### Redis offer/accept locking
-Task acceptance is protected by a short Redis lock (`SET NX EX`) to prevent double-accepts.
+Two-loop architecture (see `docs/dispatch_prd.md`):
 
-## Integration test runner
-Run `make itest` (or `scripts/run_integration.sh`) to spin up Postgres + Redis, run migrations, then pytest.
+- **FAST loop** (every 3s): Candidate pruning + min-cost flow matching + offer creation
+- **BATCH loop** (every 30s): VRP-style geographic clustering + multi-stop route planning
 
+**Objective function**: `cost = (alpha*T + beta*L + gamma*eta + rho*risk + lambda*fairness + mu*zone) / p_accept`
 
-### Idempotency middleware
-`IdempotencyMiddleware` enforces idempotency uniformly for selected POST routes and stores responses in Postgres.
-You still should pass `Idempotency-Key` for retries.
+**Offer protocol**: OFFERED (with TTL) -> ACCEPTED (Redis lock + idempotency) -> PICKUP -> DELIVERED
 
-### Explicit refusal endpoint
-Drivers (or support) can refuse an order via:
-- `POST /v1/orders/{order_id}/refuse`
+## Environment Variables
 
-This records `REFUSED` + creates a real `delivery_tasks` return task and emits `RETURN_INITIATED`.
+See `.env.example` for all options. Key toggles:
 
+| Variable | Values | Default |
+|----------|--------|---------|
+| `IDV_VENDOR` | `fake`, `onfido` | `fake` |
+| `PAYMENT_PROCESSOR` | `fake`, `stripe` | `fake` |
+| `ROUTER_MODE` | `HAVERSINE`, `OSRM` | `HAVERSINE` |
+| `AUTH_ENABLED` | `0`, `1` | `0` |
+| `RATE_LIMIT_ENABLED` | `0`, `1` | `0` |
+| `NOTIFICATION_PROVIDER` | `console`, `twilio` | `console` |
 
-## Dispatcher (CloudRun)
-- Spec: `docs/dispatch_prd.md`
-- FAST matching loop reference: `packages/dispatch/`
+## Docker Deployment
 
-Run stub:
 ```bash
-python apps/dispatcher/run_tick.py
+# Full stack (API + Worker + Postgres + Redis)
+make docker-up
+
+# Tear down
+make docker-down
 ```
 
+## CI/CD
 
-### Internal dispatch tick
-Run the dispatcher loop server-side via:
-- `POST /internal/dispatch/tick?region_id=tx-dfw`
-Optionally protect with `INTERNAL_API_TOKEN` and header `X-Internal-Token`.
+GitHub Actions workflow (`.github/workflows/ci.yml`):
+1. Unit tests (no DB required)
+2. Run migrations against test Postgres
+3. Integration tests with Postgres + Redis services
 
-Example:
-```bash
-curl -X POST "http://localhost:8000/internal/dispatch/tick?region_id=tx-dfw" \
-  -H "X-Internal-Token: $INTERNAL_API_TOKEN"
-```
+## Database
 
-
-### OfferLog training data
-FAST loop now writes `offer_logs` rows on every offer. Outcomes are updated on accept/reject/timeout (best-effort).
-Use this table to train `p_accept` once you have volume.
-
-
-### Offer expiry sweeper
-Run periodically (Cloud Run job / cron) to mark expired offers:
-- `POST /internal/dispatch/expire_offers`
-
-Example:
-```bash
-curl -X POST "http://localhost:8000/internal/dispatch/expire_offers?limit=500" \
-  -H "X-Internal-Token: $INTERNAL_API_TOKEN"
-```
-
-Local CLI:
-```bash
-python apps/dispatcher/expire_offers.py
-```
-
-
-### Performance: DB indexes
-Migration `0003_add_dispatch_indexes` adds:
-- `ix_delivery_tasks_status_offer_expires_at` for the expiry sweeper query
-- `ix_offer_logs_task_id_created_at` for outcome updates
-
-
-### Performance: Postgres partial index (optional)
-Migration `0004_add_partial_index_postgres` adds a Postgres-only partial index:
-- `ix_delivery_tasks_offered_expires_at_partial` on `delivery_tasks(offer_expires_at) WHERE status='OFFERED'`
+17 tables across 7 migrations:
+- `merchants`, `stores`, `products` — catalog
+- `customers`, `customer_addresses`, `customer_age_verifications` — customer data
+- `orders`, `order_events` — order state + hash-chained audit trail
+- `delivery_tasks`, `offer_logs` — dispatch + ML training data
+- `drivers`, `driver_vehicles`, `driver_documents` — driver compliance
+- `admin_users`, `support_tickets`, `ticket_messages` — admin/support
+- `idempotency_keys` — request replay store

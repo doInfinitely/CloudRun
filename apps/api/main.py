@@ -9,7 +9,13 @@ from apps.api.routers import health, orders, dossier, tasks, drivers, internal_e
 from apps.api.routers import profile, vehicles, merchant, stores, customers
 from apps.api.routers import support, admin
 
-app = FastAPI(title="Vape Marketplace MVP API", version="0.1.0")
+app = FastAPI(
+    title="CloudRun Marketplace API",
+    description="Age-restricted vape marketplace with last-mile dispatch orchestration. Texas-first deployment.",
+    version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176"],
