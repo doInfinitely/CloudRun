@@ -11,7 +11,7 @@ apps/
   customer-app/ React storefront (Vite, port 5173)
   merchant-app/ React merchant dashboard (Vite, port 5174)
   driver-app/   React driver app with 3D map (Vite, port 5175)
-  mission-control/ React admin dashboard (Vite, port 5176)
+  mission-control/ React admin dashboard (Vite, port 5177)
   dispatcher/   Standalone dispatch tick runner
 
 packages/
@@ -63,7 +63,7 @@ make worker      # Celery beat + worker (dispatch every 3s, expiry every 15s, ba
 make merchant    # Merchant dashboard on :5174
 make customer    # Customer storefront on :5173
 make driver      # Driver app on :5175
-make mission     # Admin dashboard on :5176
+make mission     # Admin dashboard on :5177
 ```
 
 ### 4. Test
