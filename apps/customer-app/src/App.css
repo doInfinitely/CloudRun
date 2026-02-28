@@ -225,6 +225,34 @@ body {
   flex-direction: column;
 }
 
+.product-card-image {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  background: var(--bg-secondary);
+}
+
+.product-card-image-blur {
+  position: absolute;
+  inset: -20px;
+  width: calc(100% + 40px);
+  height: calc(100% + 40px);
+  object-fit: cover;
+  filter: blur(20px) saturate(1.2);
+  transform: scale(1.1);
+  opacity: 0.6;
+}
+
+.product-card-image-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .product-card-name {
   font-size: 14px;
   font-weight: 600;

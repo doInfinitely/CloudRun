@@ -14,7 +14,7 @@ const PAGE_TITLES = {
   dashboard: "Dashboard",
   orders: "Orders",
   store: "Store",
-  menu: "Menu",
+  menu: "Stock",
   settings: "Settings",
 };
 

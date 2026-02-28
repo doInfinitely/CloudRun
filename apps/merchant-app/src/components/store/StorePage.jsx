@@ -49,14 +49,18 @@ export default function StorePage({ merchantId, storeId }) {
 
       <div className="store-page__toggle-section">
         <label className="toggle-label">Accepting Orders</label>
-        <button
-          className={`toggle-btn ${store.accepting_orders ? "toggle-btn--on" : "toggle-btn--off"}`}
-          onClick={toggleAccepting}
-          disabled={saving}
-        >
-          <span className="toggle-btn__knob" />
-          <span className="toggle-btn__text">{store.accepting_orders ? "OPEN" : "CLOSED"}</span>
-        </button>
+        <div className="toggle-wrap">
+          <button
+            className={`toggle-btn ${store.accepting_orders ? "toggle-btn--on" : "toggle-btn--off"}`}
+            onClick={toggleAccepting}
+            disabled={saving}
+          >
+            <span className="toggle-btn__knob" />
+          </button>
+          <span className={`toggle-status ${store.accepting_orders ? "toggle-status--on" : "toggle-status--off"}`}>
+            {store.accepting_orders ? "OPEN" : "CLOSED"}
+          </span>
+        </div>
       </div>
 
       <div className="store-page__hours">

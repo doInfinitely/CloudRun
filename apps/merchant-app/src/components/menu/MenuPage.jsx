@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getProducts, createProduct, updateProduct, deleteProduct } from "../../services/api";
+import { getProducts, createProduct, updateProduct, deleteProduct, uploadProductImage } from "../../services/api";
 import ProductCard from "./ProductCard";
 import ProductForm from "./ProductForm";
 
@@ -31,11 +31,17 @@ export default function MenuPage({ merchantId, storeId }) {
     load();
   };
 
-  const handleSave = async (data) => {
+  const handleSave = async (data, imageFile) => {
+    let productId;
     if (editing && editing.id) {
       await updateProduct(merchantId, storeId, editing.id, data);
+      productId = editing.id;
     } else {
-      await createProduct(merchantId, storeId, data);
+      const created = await createProduct(merchantId, storeId, data);
+      productId = created.id;
+    }
+    if (imageFile) {
+      await uploadProductImage(merchantId, storeId, productId, imageFile);
     }
     setShowForm(false);
     setEditing(null);

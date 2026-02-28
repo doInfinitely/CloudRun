@@ -4,7 +4,7 @@ const NAV = [
   { key: "dashboard", label: "Dashboard", icon: "grid" },
   { key: "orders", label: "Orders", icon: "list" },
   { key: "store", label: "Store", icon: "store" },
-  { key: "menu", label: "Menu", icon: "utensils" },
+  { key: "menu", label: "Stock", icon: "utensils" },
   { key: "settings", label: "Settings", icon: "sliders" },
 ];
 

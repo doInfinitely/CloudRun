@@ -499,6 +499,22 @@ html, body, #root {
 
 .toggle-label { font-size: 16px; font-weight: 600; }
 
+.toggle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggle-status {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.toggle-status--on { color: var(--success); }
+.toggle-status--off { color: var(--danger); }
+
 .store-page__hours { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
 .store-page__hours h3 { margin-bottom: 16px; }
 
@@ -542,9 +558,60 @@ html, body, #root {
 .product-card__desc { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .product-card__category { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--surface2); color: var(--muted); margin-bottom: 10px; }
 
+.product-card__image {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 10px;
+  background: var(--surface2);
+}
+
+.product-card__image-blur {
+  position: absolute;
+  inset: -20px;
+  width: calc(100% + 40px);
+  height: calc(100% + 40px);
+  object-fit: cover;
+  filter: blur(20px) saturate(1.2);
+  transform: scale(1.1);
+  opacity: 0.6;
+}
+
+.product-card__image-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .product-card__actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
 /* ───── Product Form ───── */
+.product-form__image-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-form__image-preview {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.product-form__image-preview img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .product-form {
   background: var(--surface);
   border: 1px solid var(--border);

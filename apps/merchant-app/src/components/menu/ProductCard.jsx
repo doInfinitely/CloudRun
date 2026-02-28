@@ -5,6 +5,12 @@ function cents(c) {
 export default function ProductCard({ product, onEdit, onToggle, onDelete }) {
   return (
     <div className={`product-card ${!product.is_available ? "product-card--unavailable" : ""}`}>
+      {product.image_url && (
+        <div className="product-card__image">
+          <img className="product-card__image-blur" src={product.image_url} alt="" aria-hidden="true" />
+          <img className="product-card__image-main" src={product.image_url} alt={product.name} />
+        </div>
+      )}
       <div className="product-card__header">
         <h4 className="product-card__name">{product.name}</h4>
         <span className="product-card__price">{cents(product.price_cents)}</span>

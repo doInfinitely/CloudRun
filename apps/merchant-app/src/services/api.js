@@ -65,3 +65,17 @@ export function updateProduct(merchantId, storeId, productId, data) {
 export function deleteProduct(merchantId, storeId, productId) {
   return request("DELETE", `/merchants/${merchantId}/stores/${storeId}/products/${productId}`);
 }
+
+export async function uploadProductImage(merchantId, storeId, productId, file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(`${BASE}/merchants/${merchantId}/stores/${storeId}/products/${productId}/image`, {
+    method: "POST",
+    body: fd,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`API ${res.status}: ${text}`);
+  }
+  return res.json();
+}
