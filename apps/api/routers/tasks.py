@@ -7,9 +7,23 @@ from sqlalchemy.orm import Session
 
 from packages.db.session import get_db
 from packages.db.models import DeliveryTask, OfferLog, Order
+from packages.core.enums import OrderStatus
+from packages.core.state_machine import OrderStateMachine
 from packages.dossier.writer import emit_order_event
 from packages.common.redis_client import get_redis, lock_key
 from packages.common.idempotency import get_or_set as idem_get_or_set
+
+
+def _try_order_transition(db, order, to: OrderStatus):
+    """Attempt an order state transition; silently skip if not allowed."""
+    try:
+        sm = OrderStateMachine(OrderStatus(order.status))
+        sm2 = sm.transition(to)
+        order.status = sm2.status.value
+        emit_order_event(db, order_id=order.id, actor_type="system", actor_id="dispatch",
+                         event_type="ORDER_STATUS_UPDATED", payload={"to": sm2.status.value})
+    except Exception:
+        pass
 
 router = APIRouter()
 
@@ -71,6 +85,10 @@ def accept_task(task_id: str, driver_id: str, db: Session = Depends(get_db), ide
             db.add(task)
             emit_order_event(db, order_id=task.order_id, actor_type="driver", actor_id=driver_id, event_type="TASK_ACCEPTED",
                             payload={"task_id": task.id, "driver_id": driver_id})
+            # Sync order status: DISPATCHING -> PICKUP
+            order = db.get(Order, task.order_id)
+            if order:
+                _try_order_transition(db, order, OrderStatus.PICKUP)
             return 200, {"task_id": task.id, "status": task.status}
 
         try:
@@ -121,6 +139,11 @@ def start_task(task_id: str, driver_id: str, db: Session = Depends(get_db)):
     db.add(task)
     emit_order_event(db, order_id=task.order_id, actor_type="driver", actor_id=driver_id,
                     event_type="TASK_STARTED", payload={"task_id": task.id})
+    # Sync order status: PICKUP -> EN_ROUTE -> DOORSTEP_VERIFY
+    order = db.get(Order, task.order_id)
+    if order:
+        _try_order_transition(db, order, OrderStatus.EN_ROUTE)
+        _try_order_transition(db, order, OrderStatus.DOORSTEP_VERIFY)
     db.commit()
     return {"task_id": task.id, "status": task.status}
 
@@ -139,6 +162,10 @@ def complete_task(task_id: str, driver_id: str, db: Session = Depends(get_db)):
     db.add(task)
     emit_order_event(db, order_id=task.order_id, actor_type="driver", actor_id=driver_id,
                     event_type="TASK_COMPLETED", payload={"task_id": task.id})
+    # Sync order status: DOORSTEP_VERIFY -> DELIVERED
+    order = db.get(Order, task.order_id)
+    if order:
+        _try_order_transition(db, order, OrderStatus.DELIVERED)
     db.commit()
     return {"task_id": task.id, "status": task.status}
 
