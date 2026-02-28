@@ -588,7 +588,7 @@ export default function DriverMap({
 
     // Marker size relative to frustum, capped so it doesn't get huge when zoomed out
     const frustum = frustumFromZoom(s.zoom);
-    const markerSize = Math.min(frustum * 0.008, frustumFromZoom(16) * 0.008);
+    const markerSize = Math.min(frustum * 0.03, frustumFromZoom(16) * 0.03);
 
     if (!s.driverDot) {
       // Blue dot

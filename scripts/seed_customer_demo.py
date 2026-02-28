@@ -18,20 +18,20 @@ from packages.db.models import Merchant, Store, Product, Customer, CustomerAddre
 # Image helpers
 # ---------------------------------------------------------------------------
 
-def _make_svg(emoji, bg_color, label):
+def _make_svg(icon_char, bg_color, label):
     svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <rect width="200" height="200" rx="16" fill="{bg_color}"/>
-  <text x="100" y="85" font-size="64" text-anchor="middle" dominant-baseline="central">{emoji}</text>
-  <text x="100" y="150" font-size="14" fill="white" text-anchor="middle" font-family="sans-serif">{label}</text>
+  <text x="100" y="80" font-size="56" fill="rgba(255,255,255,0.6)" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">{icon_char}</text>
+  <text x="100" y="145" font-size="16" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="600">{label}</text>
 </svg>'''
     b64 = base64.b64encode(svg.encode()).decode()
     return f"data:image/svg+xml;base64,{b64}"
 
 _CATEGORY_IMG = {
-    "disposable": _make_svg("\U0001F4A8", "#6366f1", "Disposable"),
-    "pod":        _make_svg("\U0001F50C", "#0891b2", "Pod System"),
-    "juice":      _make_svg("\U0001F9EA", "#16a34a", "E-Liquid"),
-    "accessory":  _make_svg("\U0001F527", "#d97706", "Accessory"),
+    "disposable": _make_svg("&#x2601;", "#6366f1", "Disposable"),
+    "pod":        _make_svg("&#x26A1;", "#0891b2", "Pod System"),
+    "juice":      _make_svg("&#x2B22;", "#16a34a", "E-Liquid"),
+    "accessory":  _make_svg("&#x2699;", "#d97706", "Accessory"),
 }
 
 def _img(category):
