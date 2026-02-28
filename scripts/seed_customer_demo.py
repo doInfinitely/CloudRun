@@ -8,8 +8,34 @@ Usage:
     python -m scripts.seed_customer_demo
 """
 
+import base64
+
 from packages.db.session import SessionLocal
 from packages.db.models import Merchant, Store, Product, Customer, CustomerAddress
+
+
+# ---------------------------------------------------------------------------
+# Image helpers
+# ---------------------------------------------------------------------------
+
+def _make_svg(emoji, bg_color, label):
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect width="200" height="200" rx="16" fill="{bg_color}"/>
+  <text x="100" y="85" font-size="64" text-anchor="middle" dominant-baseline="central">{emoji}</text>
+  <text x="100" y="150" font-size="14" fill="white" text-anchor="middle" font-family="sans-serif">{label}</text>
+</svg>'''
+    b64 = base64.b64encode(svg.encode()).decode()
+    return f"data:image/svg+xml;base64,{b64}"
+
+_CATEGORY_IMG = {
+    "disposable": _make_svg("\U0001F4A8", "#6366f1", "Disposable"),
+    "pod":        _make_svg("\U0001F50C", "#0891b2", "Pod System"),
+    "juice":      _make_svg("\U0001F9EA", "#16a34a", "E-Liquid"),
+    "accessory":  _make_svg("\U0001F527", "#d97706", "Accessory"),
+}
+
+def _img(category):
+    return _CATEGORY_IMG.get(category, _CATEGORY_IMG["accessory"])
 
 
 # ---------------------------------------------------------------------------
@@ -262,9 +288,10 @@ def seed():
             action, _ = upsert(db, Store, store_data)
             print(f"  Store {store_data['id']}: {action}")
 
-        # Products
+        # Products (inject image_url based on category)
         all_products = PRODUCTS_DOWNTOWN + PRODUCTS_SOCO
         for prod_data in all_products:
+            prod_data.setdefault("image_url", _img(prod_data.get("category", "accessory")))
             action, _ = upsert(db, Product, prod_data)
             print(f"  Product {prod_data['id']}: {action}")
 
