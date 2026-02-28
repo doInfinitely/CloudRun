@@ -1,7 +1,8 @@
 from __future__ import annotations
+import os
 import uuid
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func
 
@@ -13,6 +14,10 @@ from packages.dossier.writer import emit_order_event
 from apps.api.schemas import ProductCreate, ProductUpdate, StoreUpdate, MerchantOrderAction
 
 router = APIRouter(prefix="/merchants")
+
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads", "products")
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 
 
 # ── helpers ──────────────────────────────────────────────────────────
@@ -209,7 +214,7 @@ def create_product(mid: str, sid: str, body: ProductCreate, db: Session = Depend
     db.add(p)
     db.commit()
     db.refresh(p)
-    return {"id": p.id, "name": p.name, "description": p.description, "price_cents": p.price_cents, "category": p.category, "is_available": p.is_available, "sort_order": p.sort_order}
+    return {"id": p.id, "name": p.name, "description": p.description, "price_cents": p.price_cents, "category": p.category, "image_url": p.image_url, "is_available": p.is_available, "sort_order": p.sort_order}
 
 @router.put("/{mid}/stores/{sid}/products/{pid}")
 def update_product(mid: str, sid: str, pid: str, body: ProductUpdate, db: Session = Depends(get_db)):
@@ -222,7 +227,7 @@ def update_product(mid: str, sid: str, pid: str, body: ProductUpdate, db: Sessio
     db.add(p)
     db.commit()
     db.refresh(p)
-    return {"id": p.id, "name": p.name, "description": p.description, "price_cents": p.price_cents, "category": p.category, "is_available": p.is_available, "sort_order": p.sort_order}
+    return {"id": p.id, "name": p.name, "description": p.description, "price_cents": p.price_cents, "category": p.category, "image_url": p.image_url, "is_available": p.is_available, "sort_order": p.sort_order}
 
 @router.delete("/{mid}/stores/{sid}/products/{pid}")
 def delete_product(mid: str, sid: str, pid: str, db: Session = Depends(get_db)):
@@ -233,3 +238,24 @@ def delete_product(mid: str, sid: str, pid: str, db: Session = Depends(get_db)):
     db.delete(p)
     db.commit()
     return {"deleted": True}
+
+@router.post("/{mid}/stores/{sid}/products/{pid}/image")
+async def upload_product_image(mid: str, sid: str, pid: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    _get_store(db, mid, sid)
+    p = db.get(Product, pid)
+    if not p or p.store_id != sid:
+        raise HTTPException(404, "product not found")
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(400, "Only JPEG, PNG, and WebP files are allowed")
+    contents = await file.read()
+    if len(contents) > MAX_IMAGE_SIZE:
+        raise HTTPException(400, "File too large (max 5MB)")
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}[file.content_type]
+    filename = f"{pid}_{uuid.uuid4().hex[:8]}.{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(contents)
+    p.image_url = f"/uploads/products/{filename}"
+    db.commit()
+    return {"image_url": p.image_url}

@@ -1,6 +1,6 @@
 """add driver profile fields, vehicles, and documents tables
 
-Revision ID: 0005_driver_profile_vehicles_docs
+Revision ID: 0005_profile_vehicles_docs
 Revises: 0004_add_partial_index_postgres
 Create Date: 2026-02-27
 """
@@ -8,7 +8,7 @@ Create Date: 2026-02-27
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0005_driver_profile_vehicles_docs"
+revision = "0005_profile_vehicles_docs"
 down_revision = "0004_add_partial_index_postgres"
 branch_labels = None
 depends_on = None

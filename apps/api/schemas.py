@@ -58,3 +58,52 @@ class StoreUpdate(BaseModel):
 
 class MerchantOrderAction(BaseModel):
     action: str  # "accept" or "reject"
+
+
+# --- Admin / Support schemas ---
+
+class MerchantApplication(BaseModel):
+    legal_name: str
+    ein: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    business_type: Optional[str] = None
+    application_notes: Optional[str] = None
+
+class MerchantReview(BaseModel):
+    action: str  # "approve" or "reject"
+    notes: Optional[str] = None
+
+class TicketCreate(BaseModel):
+    requester_type: str
+    requester_id: str
+    order_id: Optional[str] = None
+    subject: str
+    body: str
+    category: Optional[str] = None
+    priority: str = "MEDIUM"
+
+class TicketUpdate(BaseModel):
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+class TicketMessageCreate(BaseModel):
+    sender_type: str
+    sender_id: str
+    body: str
+
+class AdminOrderAction(BaseModel):
+    action: str  # "cancel" or "reassign"
+    driver_id: Optional[str] = None
+
+class DriverDocumentReview(BaseModel):
+    action: str  # "approve" or "reject"
+    notes: Optional[str] = None
+
+class MerchantCreate(BaseModel):
+    legal_name: str
+    ein: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    business_type: Optional[str] = None

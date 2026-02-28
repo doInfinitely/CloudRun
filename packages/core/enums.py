@@ -33,9 +33,28 @@ class DriverStatus(str, Enum):
     EXPIRING_SOON = "EXPIRING_SOON"
     SUSPENDED = "SUSPENDED"
 
+class MerchantStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+
+class TicketStatus(str, Enum):
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    CLOSED = "CLOSED"
+
+class TicketPriority(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    URGENT = "URGENT"
+
 class ActorType(str, Enum):
     customer = "customer"
     driver = "driver"
     merchant = "merchant"
     system = "system"
     support = "support"
+    admin = "admin"

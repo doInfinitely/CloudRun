@@ -14,6 +14,12 @@ class Merchant(Base):
     legal_name = Column(String, nullable=False)
     ein = Column(String, nullable=True)
     status = Column(String, nullable=False, default="ACTIVE")
+    contact_email = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
+    business_type = Column(String, nullable=True)
+    application_notes = Column(Text, nullable=True)
+    reviewed_by = Column(String, nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     stores = relationship("Store", back_populates="merchant")
@@ -206,3 +212,41 @@ class DriverDocument(Base):
 
     driver = relationship("Driver", back_populates="documents")
     vehicle = relationship("DriverVehicle", back_populates="documents")
+
+
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=True)
+    role = Column(String, nullable=False, default="admin")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+    id = Column(String, primary_key=True)
+    requester_type = Column(String, nullable=False)
+    requester_id = Column(String, nullable=False)
+    order_id = Column(String, ForeignKey("orders.id"), nullable=True)
+    subject = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="OPEN")
+    priority = Column(String, nullable=False, default="MEDIUM")
+    category = Column(String, nullable=True)
+    assigned_to = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    messages = relationship("TicketMessage", back_populates="ticket", cascade="all, delete-orphan")
+
+
+class TicketMessage(Base):
+    __tablename__ = "ticket_messages"
+    id = Column(String, primary_key=True)
+    ticket_id = Column(String, ForeignKey("support_tickets.id"), nullable=False)
+    sender_type = Column(String, nullable=False)
+    sender_id = Column(String, nullable=False)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    ticket = relationship("SupportTicket", back_populates="messages")
