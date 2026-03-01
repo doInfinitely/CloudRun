@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "CloudRun Driver",
+    "slug": "cloudrun-driver",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#050814"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "shop.cloudrun.driver",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to show nearby deliveries and calculate routes.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Background location is used to track active deliveries.",
+        "NSCameraUsageDescription": "Camera is used for doorstep ID verification."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#050814"
+      },
+      "package": "shop.cloudrun.driver",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-location",
+      "expo-camera"
+    ],
+    "extra": {
+      "apiUrl": "https://api.cloudrun.shop"
+    }
+  }
+}

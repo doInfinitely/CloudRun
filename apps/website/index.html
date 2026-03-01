@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudRun — Last-Mile Delivery, Reinvented</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ===== THEME SYSTEM ===== */
+    :root {
+      --transition-speed: 1.2s;
+
+      /* Midnight + Electric Cyan (default) */
+      --bg: #050814;
+      --surface: #0B1224;
+      --surface2: #101B33;
+      --text: #EAF2FF;
+      --muted: #A9B6D3;
+      --border: #1D2A4A;
+      --accent: #00E5FF;
+      --accent2: #2D7DFF;
+      --accent-glow: #7AF3FF;
+      --warning: #FFB020;
+      --danger: #FF3B5C;
+      --success: #35E38D;
+    }
+
+    [data-theme="cyan"] {
+      --bg: #050814; --surface: #0B1224; --surface2: #101B33;
+      --text: #EAF2FF; --muted: #A9B6D3; --border: #1D2A4A;
+      --accent: #00E5FF; --accent2: #2D7DFF; --accent-glow: #7AF3FF;
+      --warning: #FFB020; --danger: #FF3B5C; --success: #35E38D;
+    }
+    [data-theme="lime"] {
+      --bg: #050814; --surface: #0B1224; --surface2: #101B33;
+      --text: #EEF8FF; --muted: #A9B6D3; --border: #1D2A4A;
+      --accent: #B6FF00; --accent2: #26D07C; --accent-glow: #E2FF7A;
+      --warning: #FFB020; --danger: #FF3B5C; --success: #35E38D;
+    }
+    [data-theme="magenta"] {
+      --bg: #050814; --surface: #0B1224; --surface2: #101B33;
+      --text: #F3F0FF; --muted: #B8B0D6; --border: #2A224A;
+      --accent: #FF00FF; --accent2: #7A5CFF; --accent-glow: #FF9AF7;
+      --warning: #FFB020; --danger: #FF3B5C; --success: #35E38D;
+    }
+    [data-theme="teal"] {
+      --bg: #0B1B3A; --surface: #122A54; --surface2: #F7FAFF;
+      --text: #EEF4FF; --muted: #5B6B86; --border: #0B1220;
+      --accent: #00A7B3; --accent2: #18C7C7; --accent-glow: #7AF1F1;
+      --warning: #D6E3FF; --danger: #FF3B5C; --success: #00A7B3;
+    }
+    [data-theme="gold"] {
+      --bg: #0F1115; --surface: #171A21; --surface2: #1F2430;
+      --text: #F7F0E6; --muted: #C7B9A6; --border: #2B3242;
+      --accent: #FFD700; --accent2: #D9A441; --accent-glow: #FFE2A3;
+      --warning: #FFD700; --danger: #FF4D4D; --success: #44D18A;
+    }
+
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background var(--transition-speed) ease, color var(--transition-speed) ease;
+    }
+
+    /* ===== THEME INDICATOR ===== */
+    .theme-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+      background: rgba(11, 18, 36, 0.8);
+      backdrop-filter: blur(20px);
+      padding: 10px 18px;
+      border-radius: 40px;
+      border: 1px solid var(--border);
+      transition: border-color var(--transition-speed) ease;
+    }
+    .theme-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: 2px solid transparent;
+    }
+    .theme-dot.active {
+      transform: scale(1.4);
+      border-color: white;
+      box-shadow: 0 0 12px var(--accent);
+    }
+    .theme-dot[data-t="cyan"]    { background: #00E5FF; }
+    .theme-dot[data-t="lime"]    { background: #B6FF00; }
+    .theme-dot[data-t="magenta"] { background: #FF00FF; }
+    .theme-dot[data-t="teal"]    { background: #00A7B3; }
+    .theme-dot[data-t="gold"]    { background: #FFD700; }
+
+    /* ===== GLOBAL TRANSITIONS ===== */
+    section, .card, .nav, .stat-card, .cta-section, footer, .hero-badge,
+    .nav-links a, .btn, .metric-value, .step-number, .investor-highlight {
+      transition: background var(--transition-speed) ease,
+                  color var(--transition-speed) ease,
+                  border-color var(--transition-speed) ease,
+                  box-shadow var(--transition-speed) ease;
+    }
+
+    /* ===== NAV ===== */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(5, 8, 20, 0.7);
+      backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-brand .cloud-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: background var(--transition-speed) ease;
+    }
+    .nav-brand span { color: var(--accent); transition: color var(--transition-speed) ease; }
+    .nav-links { display: flex; gap: 32px; align-items: center; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      position: relative;
+    }
+    .nav-links a:hover { color: var(--accent); }
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.3s ease, background var(--transition-speed) ease;
+    }
+    .nav-links a:hover::after { width: 100%; }
+    .nav-links a.btn::after { display: none; }
+
+    /* ===== HAMBURGER MENU ===== */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 8px;
+      z-index: 200;
+      background: none;
+      border: none;
+    }
+    .hamburger span {
+      width: 24px;
+      height: 2px;
+      background: var(--text);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+    .hamburger.active span:nth-child(2) { opacity: 0; }
+    .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(5, 8, 20, 0.95);
+      backdrop-filter: blur(24px);
+      z-index: 150;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    .mobile-menu a:hover { color: var(--accent); }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+      box-shadow: 0 0 30px rgba(0, 229, 255, 0.2);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 50px rgba(0, 229, 255, 0.4);
+      transform: translateY(-2px);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1.5px solid var(--accent);
+    }
+    .btn-outline:hover {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 8px 20px; font-size: 0.85rem; }
+
+    /* ===== HERO ===== */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 48px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+      opacity: 0.06;
+      transition: background var(--transition-speed) ease;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .hero-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .hero h1 {
+      font-size: clamp(3rem, 7vw, 5.5rem);
+      font-weight: 900;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      margin-bottom: 24px;
+    }
+    .hero h1 .gradient-text {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      transition: background var(--transition-speed) ease;
+    }
+    .hero-sub {
+      font-size: 1.25rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+    .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+    /* ===== STATS BAR ===== */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition-speed) ease;
+    }
+    .stat-card {
+      background: var(--surface);
+      padding: 40px 32px;
+      text-align: center;
+    }
+    .metric-value {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -1px;
+    }
+    .metric-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 500;
+    }
+
+    /* ===== SECTIONS ===== */
+    section { padding: 100px 48px; }
+    .section-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+    .section-tag {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 12px;
+      transition: color var(--transition-speed) ease;
+    }
+    .section-header h2 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+    .section-header p {
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto;
+      font-size: 1.05rem;
+    }
+
+    /* ===== AUDIENCE CARDS ===== */
+    .audience-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: background var(--transition-speed) ease;
+    }
+    .card:hover { border-color: var(--accent); transform: translateY(-4px); }
+    .card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      margin-bottom: 20px;
+    }
+    .card h3 { font-size: 1.35rem; font-weight: 700; margin-bottom: 10px; }
+    .card p { color: var(--muted); font-size: 0.95rem; line-height: 1.7; margin-bottom: 20px; }
+    .card-features { list-style: none; margin-bottom: 24px; }
+    .card-features li {
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-features li::before {
+      content: '\2192';
+      color: var(--accent);
+      font-weight: 700;
+      transition: color var(--transition-speed) ease;
+    }
+
+    /* ===== GET STARTED CARDS ===== */
+    .get-started-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .role-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 36px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease, background var(--transition-speed) ease, border-color var(--transition-speed) ease;
+    }
+    .role-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: background var(--transition-speed) ease;
+    }
+    .role-card:hover { border-color: var(--accent); transform: translateY(-6px); }
+    .role-card .role-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    .role-card h3 { font-size: 1.4rem; font-weight: 700; margin-bottom: 12px; }
+    .role-card p { color: var(--muted); font-size: 0.95rem; line-height: 1.7; margin-bottom: 28px; }
+
+    /* ===== APP STORE BADGES ===== */
+    .app-badges {
+      display: none;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 16px;
+    }
+    .app-badges a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .app-badges a:hover { border-color: var(--accent); color: var(--accent); }
+    .app-badges .badge-icon { font-size: 1.2rem; }
+    body.is-mobile .app-badges { display: flex; }
+    body.is-mobile .desktop-link { display: none; }
+
+    /* ===== HOW IT WORKS ===== */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .step {
+      text-align: center;
+      position: relative;
+    }
+    .step-number {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .step h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+    .step p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+
+    /* ===== TECH SECTION ===== */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .tech-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s ease, background var(--transition-speed) ease, border-color var(--transition-speed) ease;
+    }
+    .tech-card:hover { border-color: var(--accent); }
+    .tech-card h4 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tech-card p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+
+    /* ===== INVESTORS ===== */
+    .investor-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+      margin-bottom: 64px;
+    }
+    .investor-highlight {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px;
+      text-align: center;
+    }
+    .investor-highlight .big-number {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: -1px;
+      transition: color var(--transition-speed) ease;
+    }
+    .investor-highlight .label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    /* ===== CTA ===== */
+    .cta-section {
+      text-align: center;
+      padding: 100px 48px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+      opacity: 0.04;
+      transition: background var(--transition-speed) ease;
+    }
+    .cta-section h2 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+    .cta-section p {
+      color: var(--muted);
+      max-width: 500px;
+      margin: 0 auto 36px;
+      font-size: 1.05rem;
+    }
+    .cta-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      padding: 60px 48px 40px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 48px;
+      max-width: 1100px;
+      margin: 0 auto 48px;
+    }
+    .footer-brand { font-size: 1.3rem; font-weight: 800; margin-bottom: 12px; }
+    .footer-brand span { color: var(--accent); transition: color var(--transition-speed) ease; }
+    .footer-desc { color: var(--muted); font-size: 0.88rem; line-height: 1.7; }
+    .footer-col h4 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    .footer-col a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 4px 0;
+    }
+    .footer-col a:hover { color: var(--accent); }
+    .footer-bottom {
+      text-align: center;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .nav { padding: 14px 24px; }
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      section { padding: 64px 24px; }
+      .hero { padding: 100px 24px 60px; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .audience-grid { grid-template-columns: 1fr; }
+      .get-started-grid { grid-template-columns: 1fr; }
+      .steps-grid { grid-template-columns: repeat(2, 1fr); }
+      .tech-grid { grid-template-columns: 1fr; }
+      .investor-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+    }
+
+    /* ===== ANIMATIONS ===== */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body data-theme="cyan">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-brand">
+      <div class="cloud-icon">⚡</div>
+      Cloud<span>Run</span>
+    </div>
+    <div class="nav-links">
+      <a href="#merchants">Merchants</a>
+      <a href="#customers">Customers</a>
+      <a href="#drivers">Drivers</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#investors">Investors</a>
+      <a href="https://app.cloudrun.shop" class="btn btn-outline btn-sm">Login</a>
+      <a href="#get-started" class="btn btn-primary btn-sm">Get Started</a>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </nav>
+
+  <!-- MOBILE MENU -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#merchants" onclick="closeMobileMenu()">Merchants</a>
+    <a href="#customers" onclick="closeMobileMenu()">Customers</a>
+    <a href="#drivers" onclick="closeMobileMenu()">Drivers</a>
+    <a href="#how-it-works" onclick="closeMobileMenu()">How It Works</a>
+    <a href="#investors" onclick="closeMobileMenu()">Investors</a>
+    <a href="https://app.cloudrun.shop" class="btn btn-outline" onclick="closeMobileMenu()">Login</a>
+    <a href="#get-started" class="btn btn-primary" onclick="closeMobileMenu()">Get Started</a>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div>
+      <div class="hero-badge fade-up">
+        <div class="dot"></div>
+        Now launching in Texas
+      </div>
+      <h1 class="fade-up">
+        Last-Mile Delivery,<br>
+        <span class="gradient-text">Reinvented.</span>
+      </h1>
+      <p class="hero-sub fade-up">
+        The compliance-first marketplace connecting merchants, customers, and drivers with intelligent dispatch and real-time tracking.
+      </p>
+      <div class="hero-buttons fade-up">
+        <a href="https://app.cloudrun.shop" class="btn btn-primary desktop-link">Launch App</a>
+        <a href="#how-it-works" class="btn btn-outline">Learn More</a>
+      </div>
+      <div class="app-badges fade-up">
+        <a href="#" id="hero-ios-badge">
+          <span class="badge-icon">&#63743;</span> App Store
+        </a>
+        <a href="#" id="hero-android-badge">
+          <span class="badge-icon">&#9654;</span> Google Play
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats-bar">
+    <div class="stat-card fade-up">
+      <div class="metric-value">3s</div>
+      <div class="metric-label">Dispatch Cycle</div>
+    </div>
+    <div class="stat-card fade-up">
+      <div class="metric-value">30min</div>
+      <div class="metric-label">Avg Delivery</div>
+    </div>
+    <div class="stat-card fade-up">
+      <div class="metric-value">100%</div>
+      <div class="metric-label">ID Verified</div>
+    </div>
+    <div class="stat-card fade-up">
+      <div class="metric-value">24/7</div>
+      <div class="metric-label">Platform Uptime</div>
+    </div>
+  </div>
+
+  <!-- AUDIENCE SECTION -->
+  <section id="merchants">
+    <div class="section-header fade-up">
+      <div class="section-tag">Who We Serve</div>
+      <h2>Built for Every Side of the Marketplace</h2>
+      <p>Four dedicated apps, one seamless platform. Everyone gets exactly what they need.</p>
+    </div>
+
+    <div class="audience-grid">
+      <!-- Merchants -->
+      <div class="card fade-up">
+        <div class="card-icon">🏪</div>
+        <h3>Merchants</h3>
+        <p>Expand your reach without expanding your overhead. CloudRun handles delivery logistics so you can focus on what you do best.</p>
+        <ul class="card-features">
+          <li>Dedicated merchant dashboard with real-time analytics</li>
+          <li>Inventory management with stock sync</li>
+          <li>Accept or reject orders with one tap</li>
+          <li>Revenue tracking and performance metrics</li>
+          <li>Multi-store support from a single account</li>
+        </ul>
+        <a href="https://merchant.cloudrun.shop" class="btn btn-primary btn-sm desktop-link">Open Store</a>
+      </div>
+
+      <!-- Customers -->
+      <div class="card fade-up" id="customers">
+        <div class="card-icon">🛒</div>
+        <h3>Customers</h3>
+        <p>Browse, order, and track — all from one app. Age-verified checkout with real-time delivery tracking on an interactive 3D map.</p>
+        <ul class="card-features">
+          <li>Browse stores and products with live availability</li>
+          <li>Seamless age verification at checkout</li>
+          <li>Real-time driver tracking with 3D map</li>
+          <li>Saved addresses and reorder history</li>
+          <li>Secure payment processing via Stripe</li>
+        </ul>
+        <a href="https://app.cloudrun.shop" class="btn btn-primary btn-sm desktop-link">Shop Now</a>
+      </div>
+
+      <!-- Drivers -->
+      <div class="card fade-up" id="drivers">
+        <div class="card-icon">🚗</div>
+        <h3>Drivers</h3>
+        <p>Earn on your schedule with intelligent job matching. Our dispatch engine finds you the best-fit deliveries with optimized routes.</p>
+        <ul class="card-features">
+          <li>Smart job offers based on proximity and preferences</li>
+          <li>Turn-by-turn 3D navigation with voice guidance</li>
+          <li>In-app doorstep ID verification tools</li>
+          <li>Transparent earnings and trip history</li>
+          <li>Flexible online/offline status control</li>
+        </ul>
+        <a href="https://drive.cloudrun.shop" class="btn btn-primary btn-sm desktop-link">Start Driving</a>
+      </div>
+
+      <!-- Admin / Platform -->
+      <div class="card fade-up">
+        <div class="card-icon">🎯</div>
+        <h3>Mission Control</h3>
+        <p>Full platform oversight with real-time analytics, compliance monitoring, and merchant/driver management — all in one dashboard.</p>
+        <ul class="card-features">
+          <li>Platform-wide KPIs: GMV, orders, active drivers</li>
+          <li>Merchant application review and approval</li>
+          <li>Driver compliance and document management</li>
+          <li>Support ticket queue and resolution</li>
+          <li>Regulatory compliance audit trails</li>
+        </ul>
+        <a href="https://admin.cloudrun.shop" class="btn btn-primary btn-sm desktop-link">Mission Control</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- GET STARTED -->
+  <section id="get-started" style="background: var(--surface); transition: background var(--transition-speed) ease;">
+    <div class="section-header fade-up">
+      <div class="section-tag">Get Started</div>
+      <h2>Choose Your Role</h2>
+      <p>Three ways to join the CloudRun marketplace. Pick yours and get started in seconds.</p>
+    </div>
+
+    <div class="get-started-grid">
+      <!-- Shop -->
+      <div class="role-card fade-up">
+        <div class="role-icon">🛍️</div>
+        <h3>Shop</h3>
+        <p>Browse local stores, place orders, and get age-verified delivery straight to your door.</p>
+        <a href="https://app.cloudrun.shop" class="btn btn-primary desktop-link">Start Shopping</a>
+        <div class="app-badges">
+          <a href="#" class="mobile-app-link" data-app="customer-ios">
+            <span class="badge-icon">&#63743;</span> App Store
+          </a>
+          <a href="#" class="mobile-app-link" data-app="customer-android">
+            <span class="badge-icon">&#9654;</span> Google Play
+          </a>
+        </div>
+      </div>
+
+      <!-- Sell -->
+      <div class="role-card fade-up">
+        <div class="role-icon">🏪</div>
+        <h3>Sell</h3>
+        <p>List your products, manage orders, and reach new customers with zero delivery overhead.</p>
+        <a href="https://merchant.cloudrun.shop" class="btn btn-primary desktop-link">Open Your Store</a>
+        <div class="app-badges">
+          <a href="#" class="mobile-app-link" data-app="merchant-ios">
+            <span class="badge-icon">&#63743;</span> App Store
+          </a>
+          <a href="#" class="mobile-app-link" data-app="merchant-android">
+            <span class="badge-icon">&#9654;</span> Google Play
+          </a>
+        </div>
+      </div>
+
+      <!-- Drive -->
+      <div class="role-card fade-up">
+        <div class="role-icon">🚗</div>
+        <h3>Drive</h3>
+        <p>Set your own schedule, accept smart-matched deliveries, and earn with transparent pay.</p>
+        <a href="https://drive.cloudrun.shop" class="btn btn-primary desktop-link">Start Driving</a>
+        <div class="app-badges">
+          <a href="#" class="mobile-app-link" data-app="driver-ios">
+            <span class="badge-icon">&#63743;</span> App Store
+          </a>
+          <a href="#" class="mobile-app-link" data-app="driver-android">
+            <span class="badge-icon">&#9654;</span> Google Play
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works">
+    <div class="section-header fade-up">
+      <div class="section-tag">How It Works</div>
+      <h2>From Order to Doorstep in Minutes</h2>
+      <p>Our pipeline handles compliance, payment, dispatch, and delivery — automatically.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step fade-up">
+        <div class="step-number">1</div>
+        <h4>Browse & Order</h4>
+        <p>Customer selects products from nearby merchants with real-time availability.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-number">2</div>
+        <h4>Verify & Pay</h4>
+        <p>Age verification gate clears instantly. Payment authorized securely via Stripe.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-number">3</div>
+        <h4>Dispatch & Route</h4>
+        <p>Our min-cost flow engine assigns the optimal driver within a 3-second cycle.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-number">4</div>
+        <h4>Deliver & Confirm</h4>
+        <p>Driver navigates to doorstep, verifies ID in person, and confirms with GPS attestation.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECHNOLOGY -->
+  <section style="background: var(--surface); transition: background var(--transition-speed) ease;">
+    <div class="section-header fade-up">
+      <div class="section-tag">Under the Hood</div>
+      <h2>Enterprise-Grade Infrastructure</h2>
+      <p>Built for scale, compliance, and speed from day one.</p>
+    </div>
+
+    <div class="tech-grid">
+      <div class="tech-card fade-up">
+        <h4>⚡ Intelligent Dispatch</h4>
+        <p>OR-Tools min-cost flow solver runs every 3 seconds, optimizing driver-to-order assignments across time, distance, fairness, and acceptance probability.</p>
+      </div>
+      <div class="tech-card fade-up">
+        <h4>🔒 Compliance-First</h4>
+        <p>Dual age verification (checkout + doorstep), SHA-256 hash-chained audit trails, and immutable order dossiers for full regulatory coverage.</p>
+      </div>
+      <div class="tech-card fade-up">
+        <h4>🗺️ Real-Time Tracking</h4>
+        <p>Three.js-powered 3D maps with live driver location, turn-by-turn navigation, and sub-second position updates for customers and drivers.</p>
+      </div>
+      <div class="tech-card fade-up">
+        <h4>🏗️ Modular Architecture</h4>
+        <p>Decoupled microservices — API, dispatcher, workers, and 4 frontend apps — containerized with Docker for horizontal scaling.</p>
+      </div>
+      <div class="tech-card fade-up">
+        <h4>💳 Secure Payments</h4>
+        <p>Stripe-powered payment authorization with idempotency keys and request deduplication to prevent double-charges.</p>
+      </div>
+      <div class="tech-card fade-up">
+        <h4>📊 ML-Ready Logging</h4>
+        <p>Every driver offer logs features and outcomes for training acceptance-prediction models, continuously improving dispatch quality.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- INVESTORS -->
+  <section id="investors">
+    <div class="section-header fade-up">
+      <div class="section-tag">For Investors</div>
+      <h2>The Opportunity</h2>
+      <p>Age-restricted delivery is a massive, underserved market with high barriers to entry. We've already built the hardest parts.</p>
+    </div>
+
+    <div class="investor-grid">
+      <div class="investor-highlight fade-up">
+        <div class="big-number">$35B+</div>
+        <div class="label">US Vape Market Size (2026)</div>
+      </div>
+      <div class="investor-highlight fade-up">
+        <div class="big-number">87%</div>
+        <div class="label">Prefer Delivery Over In-Store</div>
+      </div>
+      <div class="investor-highlight fade-up">
+        <div class="big-number">Zero</div>
+        <div class="label">Compliance-Native Competitors</div>
+      </div>
+    </div>
+
+    <div class="tech-grid">
+      <div class="tech-card fade-up">
+        <h4>🎯 First-Mover Advantage</h4>
+        <p>No major platform has solved compliant age-restricted delivery at scale. CloudRun is purpose-built for this vertical from the ground up.</p>
+      </div>
+      <div class="tech-card fade-up">
+        <h4>📈 Expand to Adjacent Markets</h4>
+        <p>The same compliance-first infrastructure powers delivery for alcohol, cannabis, pharmaceuticals, and firearms — each a multi-billion dollar market.</p>
+      </div>
+      <div class="tech-card fade-up">
+        <h4>🛡️ Regulatory Moat</h4>
+        <p>SHA-256 hash-chained audit trails, dual ID verification, and immutable dossiers create a compliance framework that's extremely hard to replicate.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="contact">
+    <h2 class="fade-up">Ready to Run?</h2>
+    <p class="fade-up">Whether you're a merchant, driver, or investor — there's a place for you on the platform.</p>
+    <div class="cta-buttons fade-up">
+      <a href="https://app.cloudrun.shop" class="btn btn-primary desktop-link">Launch App</a>
+      <a href="https://merchant.cloudrun.shop" class="btn btn-outline desktop-link">Open a Store</a>
+      <a href="https://drive.cloudrun.shop" class="btn btn-ghost desktop-link">Start Driving</a>
+      <a href="mailto:invest@cloudrun.shop" class="btn btn-ghost">Investor Inquiries</a>
+    </div>
+    <div class="app-badges fade-up" style="margin-top: 24px;">
+      <a href="#" id="cta-ios-badge">
+        <span class="badge-icon">&#63743;</span> App Store
+      </a>
+      <a href="#" id="cta-android-badge">
+        <span class="badge-icon">&#9654;</span> Google Play
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">Cloud<span>Run</span></div>
+        <p class="footer-desc">
+          Compliance-first last-mile delivery for age-restricted products. Built in Texas, built for scale.
+        </p>
+      </div>
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <a href="https://app.cloudrun.shop">Customer App</a>
+        <a href="https://merchant.cloudrun.shop">Merchant App</a>
+        <a href="https://drive.cloudrun.shop">Driver App</a>
+        <a href="https://admin.cloudrun.shop">Mission Control</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#investors">Investors</a>
+        <a href="mailto:hello@cloudrun.shop">Contact</a>
+        <a href="#">Careers</a>
+        <a href="#">Blog</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="#">Terms of Service</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Compliance</a>
+        <a href="#">Age Policy</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      &copy; 2026 CloudRun. All rights reserved. &nbsp;|&nbsp; cloudrun.shop
+    </div>
+  </footer>
+
+  <!-- THEME SWITCHER BAR -->
+  <div class="theme-bar">
+    <div class="theme-dot active" data-t="cyan" title="Electric Cyan"></div>
+    <div class="theme-dot" data-t="lime" title="Electric Lime"></div>
+    <div class="theme-dot" data-t="magenta" title="Electric Magenta"></div>
+    <div class="theme-dot" data-t="teal" title="Navy Teal"></div>
+    <div class="theme-dot" data-t="gold" title="Warm Gold"></div>
+  </div>
+
+  <script>
+    // ===== MOBILE DETECTION =====
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      document.body.classList.add('is-mobile');
+    }
+
+    // ===== HAMBURGER MENU =====
+    const hamburger = document.getElementById('hamburger');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    hamburger.addEventListener('click', () => {
+      hamburger.classList.toggle('active');
+      mobileMenu.classList.toggle('open');
+      document.body.style.overflow = mobileMenu.classList.contains('open') ? 'hidden' : '';
+    });
+
+    function closeMobileMenu() {
+      hamburger.classList.remove('active');
+      mobileMenu.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // ===== THEME CYCLING =====
+    const themes = ['cyan', 'lime', 'magenta', 'teal', 'gold'];
+    let currentTheme = 0;
+    let autoCycle = true;
+    let cycleInterval;
+
+    function setTheme(index) {
+      currentTheme = index;
+      document.body.setAttribute('data-theme', themes[currentTheme]);
+      document.querySelectorAll('.theme-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === currentTheme);
+      });
+    }
+
+    function nextTheme() {
+      setTheme((currentTheme + 1) % themes.length);
+    }
+
+    // Auto-cycle every 5 seconds
+    function startCycle() {
+      cycleInterval = setInterval(nextTheme, 5000);
+    }
+    startCycle();
+
+    // Click a dot to jump to that theme (pauses auto-cycle for 15s)
+    document.querySelectorAll('.theme-dot').forEach((dot, i) => {
+      dot.addEventListener('click', () => {
+        clearInterval(cycleInterval);
+        setTheme(i);
+        setTimeout(startCycle, 15000);
+      });
+    });
+
+    // ===== SCROLL REVEAL =====
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "CloudRun",
+    "slug": "cloudrun-customer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#050814"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "shop.cloudrun.customer"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#050814"
+      },
+      "package": "shop.cloudrun.customer"
+    },
+    "extra": {
+      "apiUrl": "https://api.cloudrun.shop"
+    }
+  }
+}

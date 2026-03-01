@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/v1/:path*", "destination": "https://api.cloudrun.shop/v1/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://api.cloudrun.shop/uploads/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
