@@ -96,20 +96,21 @@ def complete_customer(customer_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/driver/{driver_id}/complete")
-def complete_driver(driver_id: str, db: Session = Depends(get_db)):
+def complete_driver(driver_id: str, force: bool = False, db: Session = Depends(get_db)):
     d = db.get(Driver, driver_id)
     if not d:
         raise HTTPException(404, "driver not found")
-    missing = []
-    if not d.phone:
-        missing.append("phone")
-    vehicles = db.query(DriverVehicle).filter(DriverVehicle.driver_id == driver_id).first()
-    if not vehicles:
-        missing.append("vehicle")
-    if not d.stripe_onboarding_complete:
-        missing.append("stripe")
-    if missing:
-        raise HTTPException(400, f"Missing required fields: {', '.join(missing)}")
+    if not force:
+        missing = []
+        if not d.phone:
+            missing.append("phone")
+        vehicles = db.query(DriverVehicle).filter(DriverVehicle.driver_id == driver_id).first()
+        if not vehicles:
+            missing.append("vehicle")
+        if not d.stripe_onboarding_complete:
+            missing.append("stripe")
+        if missing:
+            raise HTTPException(400, f"Missing required fields: {', '.join(missing)}")
     d.onboarding_complete = True
     db.commit()
     return {"onboarding_complete": True}
