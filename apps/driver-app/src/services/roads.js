@@ -145,7 +145,8 @@ export async function getRoadsNear(lat, lng, radiusDeg = 0.015) {
         lng + radiusDeg,
       ];
 
-      const query = `[out:json][timeout:30];(way["highway"~"^(${HIGHWAY_REGEX})$"](${bbox.join(",")});node["place"~"^(city|town|village|suburb|hamlet|neighbourhood)$"](${bbox.join(",")}););out body;>;out skel qt;`;
+      // out body geom — returns geometry inline with each way (no >;out skel needed)
+      const query = `[out:json][timeout:25];(way["highway"~"^(${HIGHWAY_REGEX})$"](${bbox.join(",")});node["place"~"^(city|town|village|suburb|hamlet|neighbourhood)$"](${bbox.join(",")}););out body geom;`;
 
       const resp = await fetch(OVERPASS_URL, {
         method: "POST",
@@ -168,23 +169,12 @@ export async function getRoadsNear(lat, lng, radiusDeg = 0.015) {
 
       const json = await resp.json();
 
-      // Build node lookup
-      const nodes = new Map();
-      for (const el of json.elements) {
-        if (el.type === "node") {
-          nodes.set(el.id, [el.lon, el.lat]);
-        }
-      }
-
-      // Resolve ways → coordinate arrays
       const roads = [];
       const places = [];
       for (const el of json.elements) {
-        if (el.type === "way" && el.tags?.highway) {
-          const coords = el.nodes
-            ?.map((nid) => nodes.get(nid))
-            .filter(Boolean);
-          if (!coords || coords.length < 2) continue;
+        if (el.type === "way" && el.tags?.highway && el.geometry) {
+          const coords = el.geometry.map(g => [g.lon, g.lat]);
+          if (coords.length < 2) continue;
           roads.push({
             h: el.tags.highway,
             p: coords,
