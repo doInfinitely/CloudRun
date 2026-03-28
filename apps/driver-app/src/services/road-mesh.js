@@ -174,8 +174,11 @@ export function buildRoadMeshes(roads, { colors, lonToX, latToY }) {
   }
 
   // Group by color for fewer draw calls
+  // depthWrite off prevents Z-fighting where roads overlap at intersections
   const fillMesh = _mergeColoredMeshes(fillGeos);
   const strokeMesh = _mergeColoredMeshes(strokeGeos);
+  strokeMesh.material.depthWrite = false;
+  fillMesh.material.depthWrite = false;
   strokeMesh.renderOrder = 1;
   fillMesh.renderOrder = 2;
 
@@ -434,7 +437,7 @@ export function buildBuildingMesh(buildings, { fillColor, outlineColor, mode = "
   let light = null;
   if (mesh && mode === "extruded") {
     mesh.material.dispose();
-    mesh.material = new THREE.MeshLambertMaterial({ color: darkenColor(fillColor, -0.25), side: THREE.DoubleSide });
+    mesh.material = new THREE.MeshLambertMaterial({ color: fillColor, side: THREE.DoubleSide });
     mesh.renderOrder = 5;
     light = new THREE.Group();
     light.add(new THREE.AmbientLight(0xffffff, 1.5));
