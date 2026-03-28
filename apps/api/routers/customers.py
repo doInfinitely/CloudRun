@@ -1,5 +1,6 @@
 from __future__ import annotations
 import uuid
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -17,6 +18,7 @@ class CustomerUpsert(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    dob: Optional[str] = None
 
 
 class AddressCreate(BaseModel):
@@ -33,7 +35,9 @@ def _customer_dict(c: Customer) -> dict:
         "name": c.name,
         "phone": c.phone,
         "email": c.email,
+        "dob": c.dob.isoformat() if c.dob else None,
         "status": c.status,
+        "onboarding_complete": c.onboarding_complete,
         "created_at": c.created_at.isoformat() if c.created_at else None,
     }
 
@@ -88,6 +92,8 @@ def upsert_customer(body: CustomerUpsert, db: Session = Depends(get_db)):
             c.phone = body.phone
         if body.email is not None:
             c.email = body.email
+        if body.dob is not None:
+            c.dob = date.fromisoformat(body.dob)
         db.commit()
     else:
         c = Customer(
@@ -95,6 +101,7 @@ def upsert_customer(body: CustomerUpsert, db: Session = Depends(get_db)):
             name=body.name,
             phone=body.phone,
             email=body.email,
+            dob=date.fromisoformat(body.dob) if body.dob else None,
         )
         db.add(c)
         db.commit()

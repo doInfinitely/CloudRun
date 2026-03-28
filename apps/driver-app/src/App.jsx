@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import useGeolocation from "./hooks/useGeolocation.js";
 import useNavigation from "./hooks/useNavigation.js";
+import { speak, DEFAULT_VOICE_ID } from "./services/tts.js";
 import DriverMap from "./components/DriverMap.jsx";
 import NavigationBanner from "./components/NavigationBanner.jsx";
 import DirectionsList from "./components/DirectionsList.jsx";
@@ -8,6 +9,9 @@ import TaskPanel from "./components/TaskPanel.jsx";
 import MenuDrawer from "./components/MenuDrawer.jsx";
 import ProfilePage from "./components/ProfilePage.jsx";
 import SessionSettings from "./components/SessionSettings.jsx";
+import LoginPage from "./components/LoginPage.jsx";
+import OnboardingWizard from "./components/OnboardingWizard.jsx";
+import { getUser, clearAuth, saveUser } from "./services/auth.js";
 import {
   getDriverTask,
   updateDriver,
@@ -21,11 +25,10 @@ import {
   refuseOrder as apiRefuseOrder,
 } from "./services/api.js";
 
-// Hardcoded driver ID for now — would come from auth in production
-const DRIVER_ID = "drv_demo_001";
 const POLL_INTERVAL = 5000;
 
 export default function App() {
+  const [user, setUser] = useState(getUser);
   const { position, heading, error: geoError } = useGeolocation();
   const nav = useNavigation(position);
   const pollRef = useRef(null);
@@ -33,12 +36,20 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [driverProfile, setDriverProfile] = useState(null);
 
+  const handleLogout = useCallback(() => {
+    clearAuth();
+    setUser(null);
+  }, []);
+
+  const driverId = user?.id;
+
   // Fetch profile on mount
   useEffect(() => {
-    getProfile(DRIVER_ID)
+    if (!driverId) return;
+    getProfile(driverId)
       .then(setDriverProfile)
       .catch(() => {});
-  }, []);
+  }, [driverId]);
 
   // Poll for task offers when idle
   useEffect(() => {
@@ -49,7 +60,7 @@ export default function App() {
 
     const poll = async () => {
       try {
-        const data = await getDriverTask(DRIVER_ID);
+        const data = await getDriverTask(driverId);
         if (data.task) {
           nav.receiveTask(data.task);
         }
@@ -68,7 +79,7 @@ export default function App() {
     if (!position) return;
 
     const interval = setInterval(() => {
-      updateDriver(DRIVER_ID, {
+      updateDriver(driverId, {
         lat: position.lat,
         lng: position.lng,
         status: nav.phase === "IDLE" ? "IDLE" : "ON_TASK",
@@ -76,7 +87,7 @@ export default function App() {
     }, POLL_INTERVAL);
 
     // Send immediately
-    updateDriver(DRIVER_ID, {
+    updateDriver(driverId, {
       lat: position.lat,
       lng: position.lng,
       status: nav.phase === "IDLE" ? "IDLE" : "ON_TASK",
@@ -85,10 +96,14 @@ export default function App() {
     return () => clearInterval(interval);
   }, [position, nav.phase]);
 
-  // Log voice queue
+  // Voice navigation — speak queued instructions via ElevenLabs TTS
+  const voiceId = useRef(localStorage.getItem("cloudrun_voice_id") || DEFAULT_VOICE_ID);
   useEffect(() => {
     if (nav.voiceQueue.length > 0) {
-      console.log("[Voice]", nav.voiceQueue[0]);
+      const text = nav.voiceQueue[0];
+      if (localStorage.getItem("cloudrun_sound") !== "false") {
+        speak(text, voiceId.current);
+      }
       nav.dequeueVoice();
     }
   }, [nav.voiceQueue, nav.dequeueVoice]);
@@ -97,7 +112,7 @@ export default function App() {
   const handleAccept = useCallback(async () => {
     if (!nav.task) return;
     try {
-      await apiAccept(nav.task.id, DRIVER_ID);
+      await apiAccept(nav.task.id, driverId);
       nav.acceptOffer();
     } catch (e) {
       console.error("Accept failed:", e);
@@ -107,7 +122,7 @@ export default function App() {
   const handleReject = useCallback(async () => {
     if (!nav.task) return;
     try {
-      await apiReject(nav.task.id, DRIVER_ID);
+      await apiReject(nav.task.id, driverId);
       nav.rejectOffer();
     } catch (e) {
       console.error("Reject failed:", e);
@@ -117,7 +132,7 @@ export default function App() {
   const handlePickedUp = useCallback(async () => {
     if (!nav.task) return;
     try {
-      await apiStart(nav.task.id, DRIVER_ID);
+      await apiStart(nav.task.id, driverId);
       nav.confirmPickup();
     } catch (e) {
       console.error("Start failed:", e);
@@ -127,7 +142,7 @@ export default function App() {
   const handleDelivered = useCallback(async () => {
     if (!nav.task) return;
     try {
-      await apiComplete(nav.task.id, DRIVER_ID);
+      await apiComplete(nav.task.id, driverId);
       nav.confirmDelivery();
     } catch (e) {
       console.error("Complete failed:", e);
@@ -193,6 +208,23 @@ export default function App() {
     setDriverProfile((p) => p ? { ...p, ...updates } : p);
   };
 
+  if (!user) {
+    return <LoginPage onAuth={setUser} />;
+  }
+
+  if (!user.onboarding_complete) {
+    return (
+      <OnboardingWizard
+        user={user}
+        onComplete={() => {
+          const updated = { ...user, onboarding_complete: true };
+          saveUser(updated);
+          setUser(updated);
+        }}
+      />
+    );
+  }
+
   if (!position) {
     return <div className="loading-screen">Acquiring location...</div>;
   }
@@ -245,18 +277,19 @@ export default function App() {
       {/* Slide-out drawer */}
       {menuOpen && (
         <MenuDrawer
-          driverId={DRIVER_ID}
+          driverId={driverId}
           profile={driverProfile}
           onClose={() => setMenuOpen(false)}
           setCurrentPage={setCurrentPage}
           onStatusChange={handleStatusChange}
+          onLogout={handleLogout}
         />
       )}
 
       {/* Full-screen overlays */}
       {currentPage === "profile" && (
         <ProfilePage
-          driverId={DRIVER_ID}
+          driverId={driverId}
           onBack={() => setCurrentPage("main")}
           onProfileUpdate={handleProfileUpdate}
         />
@@ -264,7 +297,7 @@ export default function App() {
 
       {currentPage === "settings" && (
         <SessionSettings
-          driverId={DRIVER_ID}
+          driverId={driverId}
           profile={driverProfile}
           onBack={() => setCurrentPage("main")}
           onStatusChange={handleStatusChange}

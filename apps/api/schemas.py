@@ -107,3 +107,31 @@ class MerchantCreate(BaseModel):
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
     business_type: Optional[str] = None
+
+class MerchantProfileUpdate(BaseModel):
+    legal_name: Optional[str] = None
+    ein: Optional[str] = None
+    business_type: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_name: Optional[str] = None
+
+class StoreCreate(BaseModel):
+    name: str
+    address: str
+    lat: Optional[str] = None
+    lng: Optional[str] = None
+
+
+# --- Auth schemas ---
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+    type: str  # customer/driver/merchant
+    legal_name: Optional[str] = None

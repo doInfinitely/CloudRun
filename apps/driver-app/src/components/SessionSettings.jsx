@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { updateDriver } from "../services/api.js";
+import { VOICE_PRESETS, DEFAULT_VOICE_ID } from "../services/tts.js";
 
 export default function SessionSettings({ driverId, profile, onBack, onStatusChange }) {
   const isOnline = profile?.status === "IDLE" || profile?.status === "ON_TASK";
@@ -8,6 +9,9 @@ export default function SessionSettings({ driverId, profile, onBack, onStatusCha
   );
   const [sound, setSound] = useState(
     () => localStorage.getItem("cloudrun_sound") !== "false"
+  );
+  const [voiceId, setVoiceId] = useState(
+    () => localStorage.getItem("cloudrun_voice_id") || DEFAULT_VOICE_ID
   );
 
   const handleToggleOnline = async () => {
@@ -30,6 +34,12 @@ export default function SessionSettings({ driverId, profile, onBack, onStatusCha
     const next = !sound;
     setSound(next);
     localStorage.setItem("cloudrun_sound", String(next));
+  };
+
+  const handleVoiceChange = (e) => {
+    const id = e.target.value;
+    setVoiceId(id);
+    localStorage.setItem("cloudrun_voice_id", id);
   };
 
   return (
@@ -80,6 +90,27 @@ export default function SessionSettings({ driverId, profile, onBack, onStatusCha
             {sound ? "ON" : "OFF"}
           </button>
         </div>
+
+        {sound && (
+          <div className="settings-item">
+            <div className="settings-item-info">
+              <div className="settings-item-label">Navigation Voice</div>
+              <div className="settings-item-desc">Choose the voice for turn-by-turn directions</div>
+            </div>
+            <select
+              value={voiceId}
+              onChange={handleVoiceChange}
+              style={{
+                background: "#1e293b", color: "#e2e8f0", border: "1px solid #334155",
+                borderRadius: 6, padding: "6px 10px", fontSize: 13, cursor: "pointer",
+              }}
+            >
+              {VOICE_PRESETS.map(v => (
+                <option key={v.id} value={v.id}>{v.name} — {v.description}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,9 +6,10 @@ import OrdersPage from "./components/orders/OrdersPage";
 import StorePage from "./components/store/StorePage";
 import MenuPage from "./components/menu/MenuPage";
 import SettingsPage from "./components/settings/SettingsPage";
+import LoginPage from "./components/LoginPage";
+import OnboardingWizard from "./components/OnboardingWizard";
 import { getStores } from "./services/api";
-
-const MERCHANT_ID = "merch_demo_001";
+import { getUser, clearAuth, saveUser } from "./services/auth";
 
 const PAGE_TITLES = {
   dashboard: "Dashboard",
@@ -19,19 +20,45 @@ const PAGE_TITLES = {
 };
 
 export default function App() {
+  const [user, setUser] = useState(getUser);
   const [page, setPage] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [stores, setStores] = useState([]);
   const [activeStore, setActiveStore] = useState(null);
 
+  const merchantId = user?.id;
+
   useEffect(() => {
-    getStores(MERCHANT_ID)
+    if (!merchantId) return;
+    getStores(merchantId)
       .then((s) => {
         setStores(s);
         if (s.length > 0) setActiveStore(s[0].id);
       })
       .catch(() => {});
-  }, []);
+  }, [merchantId]);
+
+  const handleLogout = () => {
+    clearAuth();
+    setUser(null);
+  };
+
+  if (!user) {
+    return <LoginPage onAuth={setUser} />;
+  }
+
+  if (!user.onboarding_complete) {
+    return (
+      <OnboardingWizard
+        user={user}
+        onComplete={() => {
+          const updated = { ...user, onboarding_complete: true };
+          saveUser(updated);
+          setUser(updated);
+        }}
+      />
+    );
+  }
 
   const storeName = stores.find((s) => s.id === activeStore)?.name || "";
 
@@ -43,6 +70,7 @@ export default function App() {
         storeName={storeName}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onLogout={handleLogout}
       />
       <div className="app__main">
         <TopBar
@@ -50,10 +78,10 @@ export default function App() {
           onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
         <div className="app__content">
-          {page === "dashboard" && <DashboardPage merchantId={MERCHANT_ID} />}
-          {page === "orders" && <OrdersPage merchantId={MERCHANT_ID} storeId={activeStore} />}
-          {page === "store" && <StorePage merchantId={MERCHANT_ID} storeId={activeStore} />}
-          {page === "menu" && <MenuPage merchantId={MERCHANT_ID} storeId={activeStore} />}
+          {page === "dashboard" && <DashboardPage merchantId={merchantId} />}
+          {page === "orders" && <OrdersPage merchantId={merchantId} storeId={activeStore} />}
+          {page === "store" && <StorePage merchantId={merchantId} storeId={activeStore} />}
+          {page === "menu" && <MenuPage merchantId={merchantId} storeId={activeStore} />}
           {page === "settings" && <SettingsPage />}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { updateDriver } from "../services/api.js";
 
-export default function MenuDrawer({ driverId, profile, onClose, setCurrentPage, onStatusChange }) {
+export default function MenuDrawer({ driverId, profile, onClose, setCurrentPage, onStatusChange, onLogout }) {
   const isOnline = profile?.status === "IDLE" || profile?.status === "ON_TASK";
 
   const handleToggleOnline = async () => {
@@ -48,6 +48,13 @@ export default function MenuDrawer({ driverId, profile, onClose, setCurrentPage,
             onClick={() => { setCurrentPage("settings"); onClose(); }}
           >
             Settings
+          </button>
+          <button
+            className="drawer-nav-item"
+            style={{ color: "var(--accent-red, #ef4444)" }}
+            onClick={onLogout}
+          >
+            Log Out
           </button>
         </nav>
 

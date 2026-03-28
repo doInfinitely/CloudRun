@@ -16,10 +16,14 @@ class Merchant(Base):
     status = Column(String, nullable=False, default="ACTIVE")
     contact_email = Column(String, nullable=True)
     contact_phone = Column(String, nullable=True)
+    contact_name = Column(String, nullable=True)
     business_type = Column(String, nullable=True)
     application_notes = Column(Text, nullable=True)
     reviewed_by = Column(String, nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    onboarding_complete = Column(Boolean, nullable=False, default=False, server_default="false")
+    stripe_account_id = Column(String, nullable=True)
+    stripe_onboarding_complete = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     stores = relationship("Store", back_populates="merchant")
@@ -66,6 +70,7 @@ class Customer(Base):
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
     status = Column(String, nullable=False, default="ACTIVE")
+    onboarding_complete = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 class CustomerAddress(Base):
@@ -156,6 +161,10 @@ class Driver(Base):
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     photo_url = Column(String, nullable=True)
+    # onboarding / stripe
+    onboarding_complete = Column(Boolean, nullable=False, default=False, server_default="false")
+    stripe_account_id = Column(String, nullable=True)
+    stripe_onboarding_complete = Column(Boolean, nullable=False, default=False, server_default="false")
     # eligibility / compliance
     insurance_verified = Column(Boolean, nullable=False, default=False)
     registration_verified = Column(Boolean, nullable=False, default=False)
@@ -250,3 +259,20 @@ class TicketMessage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     ticket = relationship("SupportTicket", back_populates="messages")
+
+
+class BuildingCache(Base):
+    __tablename__ = "building_cache"
+    grid_key = Column(String, primary_key=True)   # "lat_floor,lng_floor" (0.01° grid)
+    data_json = Column(JSON, nullable=False)       # [{p: [[lon,lat]...], h?: m, t?: type}]
+    fetched_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class UserCredential(Base):
+    __tablename__ = "user_credentials"
+    id = Column(String, primary_key=True)
+    email = Column(String, nullable=False, unique=True, index=True)
+    password_hash = Column(String, nullable=False)
+    entity_type = Column(String, nullable=False)   # admin/merchant/customer/driver
+    entity_id = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -7,14 +7,35 @@ import CartPage from "./pages/CartPage.jsx";
 import CheckoutPage from "./pages/CheckoutPage.jsx";
 import OrderTrackingPage from "./pages/OrderTrackingPage.jsx";
 import OrderHistoryPage from "./pages/OrderHistoryPage.jsx";
-
-const CUSTOMER_ID = "cust_demo_001";
+import LoginPage from "./pages/LoginPage.jsx";
+import OnboardingWizard from "./components/OnboardingWizard.jsx";
+import { getUser, clearAuth, saveUser } from "./services/auth.js";
 
 export default function App() {
+  const [user, setUser] = useState(getUser);
   const [page, setPage] = useState("stores");
   const [selectedStoreId, setSelectedStoreId] = useState(null);
   const [trackingOrderId, setTrackingOrderId] = useState(null);
   const cartHook = useCart();
+
+  if (!user) {
+    return <LoginPage onAuth={setUser} />;
+  }
+
+  if (!user.onboarding_complete) {
+    return (
+      <OnboardingWizard
+        user={user}
+        onComplete={() => {
+          const updated = { ...user, onboarding_complete: true };
+          saveUser(updated);
+          setUser(updated);
+        }}
+      />
+    );
+  }
+
+  const customerId = user.id;
 
   const navigate = useCallback((pg, params) => {
     setPage(pg);
@@ -48,7 +69,7 @@ export default function App() {
     case "cart":
       content = (
         <CartPage
-          customerId={CUSTOMER_ID}
+          customerId={customerId}
           cart={cartHook}
           onBack={() => setPage(selectedStoreId ? "store-detail" : "stores")}
           onCheckout={() => setPage("checkout")}
@@ -58,7 +79,7 @@ export default function App() {
     case "checkout":
       content = (
         <CheckoutPage
-          customerId={CUSTOMER_ID}
+          customerId={customerId}
           cart={cartHook}
           onTrackOrder={(orderId) => navigate("tracking", { orderId })}
           onBack={() => setPage("cart")}
@@ -76,7 +97,7 @@ export default function App() {
     case "orders":
       content = (
         <OrderHistoryPage
-          customerId={CUSTOMER_ID}
+          customerId={customerId}
           onTrackOrder={(orderId) => navigate("tracking", { orderId })}
         />
       );

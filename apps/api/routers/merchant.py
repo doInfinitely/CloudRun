@@ -11,7 +11,7 @@ from packages.db.models import Merchant, Store, Order, Product, OrderEvent, Deli
 from packages.core.enums import OrderStatus
 from packages.core.state_machine import OrderStateMachine
 from packages.dossier.writer import emit_order_event
-from apps.api.schemas import ProductCreate, ProductUpdate, StoreUpdate, MerchantOrderAction
+from apps.api.schemas import ProductCreate, ProductUpdate, StoreUpdate, MerchantOrderAction, MerchantProfileUpdate, StoreCreate
 
 router = APIRouter(prefix="/merchants")
 
@@ -48,6 +48,43 @@ def _transition(db: Session, order: Order, to: OrderStatus, *, actor_type="merch
     order.status = sm2.status.value
     db.add(order)
     emit_order_event(db, order_id=order.id, actor_type=actor_type, actor_id=actor_id, event_type=event_type, payload={"to": sm2.status.value})
+
+
+# ── Profile ──────────────────────────────────────────────────────────
+
+@router.put("/{mid}/profile")
+def update_profile(mid: str, body: MerchantProfileUpdate, db: Session = Depends(get_db)):
+    m = _get_merchant(db, mid)
+    for field, val in body.model_dump(exclude_unset=True).items():
+        setattr(m, field, val)
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return {
+        "id": m.id, "legal_name": m.legal_name, "ein": m.ein,
+        "business_type": m.business_type, "contact_email": m.contact_email,
+        "contact_phone": m.contact_phone, "contact_name": m.contact_name,
+    }
+
+
+# ── Create Store ─────────────────────────────────────────────────────
+
+@router.post("/{mid}/stores", status_code=201)
+def create_store(mid: str, body: StoreCreate, db: Session = Depends(get_db)):
+    _get_merchant(db, mid)
+    sid = f"store_{uuid.uuid4().hex[:8]}"
+    s = Store(
+        id=sid,
+        merchant_id=mid,
+        name=body.name,
+        address=body.address,
+        lat=body.lat,
+        lng=body.lng,
+    )
+    db.add(s)
+    db.commit()
+    db.refresh(s)
+    return {"id": s.id, "name": s.name, "address": s.address, "lat": s.lat, "lng": s.lng, "status": s.status}
 
 
 # ── Dashboard ────────────────────────────────────────────────────────

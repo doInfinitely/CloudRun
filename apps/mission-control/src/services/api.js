@@ -1,12 +1,19 @@
+import { getToken, clearAuth } from "./auth";
+
 const BASE = "/v1";
 
 async function request(method, path, body) {
-  const opts = {
-    method,
-    headers: { "Content-Type": "application/json" },
-  };
+  const headers = { "Content-Type": "application/json" };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${BASE}${path}`, opts);
+  if (res.status === 401) {
+    clearAuth();
+    window.location.reload();
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API ${res.status}: ${text}`);
@@ -15,6 +22,15 @@ async function request(method, path, body) {
     return res;
   }
   return res.json();
+}
+
+// Auth
+export function login(email, password) {
+  return request("POST", "/auth/login", { email, password });
+}
+
+export function validateToken() {
+  return request("GET", "/auth/me");
 }
 
 // Dashboard

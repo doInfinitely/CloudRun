@@ -1,17 +1,37 @@
+import { getToken, clearAuth } from "./auth";
+
 const BASE = "/v1";
 
 async function request(method, path, body, extraHeaders = {}) {
-  const opts = {
-    method,
-    headers: { "Content-Type": "application/json", ...extraHeaders },
-  };
+  const headers = { "Content-Type": "application/json", ...extraHeaders };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${BASE}${path}`, opts);
+  if (res.status === 401) {
+    clearAuth();
+    window.location.reload();
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API ${res.status}: ${text}`);
   }
   return res.json();
+}
+
+// Auth
+export function login(email, password) {
+  return request("POST", "/auth/login", { email, password });
+}
+
+export function signup(data) {
+  return request("POST", "/auth/signup", data);
+}
+
+export function validateToken() {
+  return request("GET", "/auth/me");
 }
 
 // Stores
@@ -69,4 +89,8 @@ export function authorizePayment(orderId, paymentMethodId) {
 
 export function getOrderTracking(orderId) {
   return request("GET", `/orders/${orderId}/tracking`);
+}
+
+export function completeOnboarding(customerId) {
+  return request("POST", `/onboarding/customer/${customerId}/complete`);
 }

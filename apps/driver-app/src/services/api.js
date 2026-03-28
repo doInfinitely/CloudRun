@@ -1,17 +1,37 @@
+import { getToken, clearAuth } from "./auth";
+
 const BASE = "/v1";
 
 async function request(method, path, body, extraHeaders = {}) {
-  const opts = {
-    method,
-    headers: { "Content-Type": "application/json", ...extraHeaders },
-  };
+  const headers = { "Content-Type": "application/json", ...extraHeaders };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${BASE}${path}`, opts);
+  if (res.status === 401) {
+    clearAuth();
+    window.location.reload();
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API ${res.status}: ${text}`);
   }
   return res.json();
+}
+
+// Auth
+export function login(email, password) {
+  return request("POST", "/auth/login", { email, password });
+}
+
+export function signup(data) {
+  return request("POST", "/auth/signup", data);
+}
+
+export function validateToken() {
+  return request("GET", "/auth/me");
 }
 
 export function updateDriver(driverId, data) {
@@ -63,10 +83,19 @@ export function refuseOrder(orderId, reasonCode, gps, notes) {
 
 // Upload helper — sends FormData without Content-Type (browser sets multipart boundary)
 async function uploadRequest(path, formData) {
+  const headers = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
+    headers,
     body: formData,
   });
+  if (res.status === 401) {
+    clearAuth();
+    window.location.reload();
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API ${res.status}: ${text}`);
@@ -124,4 +153,24 @@ export function uploadDriverDocument(driverId, docType, file) {
   fd.append("doc_type", docType);
   fd.append("file", file);
   return uploadRequest(`/drivers/${driverId}/documents`, fd);
+}
+
+// Stripe Connect
+export function createStripeAccount(driverId) {
+  return request("POST", `/onboarding/driver/${driverId}/stripe/create-account`);
+}
+
+export function createStripeLink(driverId, returnUrl, refreshUrl) {
+  return request("POST", `/onboarding/driver/${driverId}/stripe/create-link`, {
+    return_url: returnUrl,
+    refresh_url: refreshUrl,
+  });
+}
+
+export function getStripeStatus(driverId) {
+  return request("GET", `/onboarding/driver/${driverId}/stripe/status`);
+}
+
+export function completeOnboarding(driverId) {
+  return request("POST", `/onboarding/driver/${driverId}/complete`);
 }

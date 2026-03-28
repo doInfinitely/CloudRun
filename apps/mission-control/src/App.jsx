@@ -8,6 +8,8 @@ import DriversPage from "./components/drivers/DriversPage";
 import CustomersPage from "./components/customers/CustomersPage";
 import SupportPage from "./components/support/SupportPage";
 import AnalyticsPage from "./components/analytics/AnalyticsPage";
+import LoginPage from "./components/LoginPage";
+import { getUser, clearAuth } from "./services/auth";
 
 const PAGE_TITLES = {
   dashboard: "Dashboard",
@@ -20,8 +22,18 @@ const PAGE_TITLES = {
 };
 
 export default function App() {
+  const [user, setUser] = useState(getUser);
   const [page, setPage] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const handleLogout = () => {
+    clearAuth();
+    setUser(null);
+  };
+
+  if (!user) {
+    return <LoginPage onAuth={setUser} />;
+  }
 
   return (
     <div className="app">
@@ -30,6 +42,7 @@ export default function App() {
         setPage={setPage}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onLogout={handleLogout}
       />
       <div className="app__main">
         <TopBar

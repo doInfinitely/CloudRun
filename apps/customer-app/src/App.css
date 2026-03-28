@@ -875,6 +875,194 @@ body {
   color: var(--accent-red);
 }
 
+/* ========== Login Page ========== */
+.login-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 40px 28px;
+  text-align: center;
+}
+
+.login-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent-blue);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.login-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.login-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent-blue);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.login-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-error {
+  color: var(--accent-red);
+  font-size: 13px;
+  text-align: left;
+}
+
+.login-toggle {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.login-link {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ========== Onboarding Wizard ========== */
+.onboarding-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+  padding: 20px;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 40px 28px;
+  text-align: center;
+}
+
+.onboarding-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent-blue);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.onboarding-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.onboarding-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.onboarding-steps {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.onboarding-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-step-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.onboarding-step-label.active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.onboarding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.onboarding-field-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: -4px;
+}
+
 /* ========== Loading / Empty ========== */
 .loading-screen {
   display: flex;

@@ -34,6 +34,7 @@ PUBLIC_PATHS = {
 }
 PUBLIC_PREFIXES = (
     "/uploads/",
+    "/v1/auth/",
 )
 
 

@@ -26,7 +26,7 @@ const ICONS = {
   ),
 };
 
-export default function Sidebar({ page, setPage, storeName, collapsed, onToggle }) {
+export default function Sidebar({ page, setPage, storeName, collapsed, onToggle, onLogout }) {
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="sidebar__brand" onClick={onToggle}>
@@ -49,6 +49,16 @@ export default function Sidebar({ page, setPage, storeName, collapsed, onToggle 
           </button>
         ))}
       </nav>
+      {onLogout && (
+        <div className="sidebar__footer">
+          <button className="sidebar__item sidebar__logout" onClick={onLogout} title="Log out">
+            <span className="sidebar__icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3M13 14l4-4-4-4M17 10H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </span>
+            {!collapsed && <span className="sidebar__label">Log Out</span>}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

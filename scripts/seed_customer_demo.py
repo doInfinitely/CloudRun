@@ -10,8 +10,13 @@ Usage:
 
 import base64
 
+import bcrypt
+
 from packages.db.session import SessionLocal
-from packages.db.models import Merchant, Store, Product, Customer, CustomerAddress
+from packages.db.models import (
+    Merchant, Store, Product, Customer, CustomerAddress,
+    AdminUser, Driver, UserCredential,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -46,6 +51,7 @@ MERCHANT = dict(
     id="merch_demo_001",
     legal_name="Austin Vape Co",
     status="ACTIVE",
+    onboarding_complete=True,
 )
 
 STORES = [
@@ -243,6 +249,7 @@ CUSTOMER = dict(
     phone="+15125551234",
     email="alex@example.com",
     status="ACTIVE",
+    onboarding_complete=True,
 )
 
 ADDRESS = dict(
@@ -253,6 +260,55 @@ ADDRESS = dict(
     lng="-97.7580",
     deliverable_flag=True,
 )
+
+ADMIN = dict(
+    id="admin_001",
+    name="Admin",
+    email="do.infinitely@gmail.com",
+    role="admin",
+)
+
+DRIVER = dict(
+    id="drv_demo_001",
+    name="Demo Driver",
+    email="driver@example.com",
+    status="OFFLINE",
+    onboarding_complete=True,
+)
+
+# Password for all demo accounts: "cloudrun123"
+_DEMO_PW_HASH = bcrypt.hashpw(b"cloudrun123", bcrypt.gensalt()).decode()
+
+CREDENTIALS = [
+    dict(
+        id="cred_admin_001",
+        email="do.infinitely@gmail.com",
+        password_hash=_DEMO_PW_HASH,
+        entity_type="admin",
+        entity_id="admin_001",
+    ),
+    dict(
+        id="cred_merch_001",
+        email="merchant@example.com",
+        password_hash=_DEMO_PW_HASH,
+        entity_type="merchant",
+        entity_id="merch_demo_001",
+    ),
+    dict(
+        id="cred_cust_001",
+        email="alex@example.com",
+        password_hash=_DEMO_PW_HASH,
+        entity_type="customer",
+        entity_id="cust_demo_001",
+    ),
+    dict(
+        id="cred_drv_001",
+        email="driver@example.com",
+        password_hash=_DEMO_PW_HASH,
+        entity_type="driver",
+        entity_id="drv_demo_001",
+    ),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +358,19 @@ def seed():
         # Address
         action, _ = upsert(db, CustomerAddress, ADDRESS)
         print(f"  Address {ADDRESS['id']}: {action}")
+
+        # Admin user
+        action, _ = upsert(db, AdminUser, ADMIN)
+        print(f"  AdminUser {ADMIN['id']}: {action}")
+
+        # Driver
+        action, _ = upsert(db, Driver, DRIVER)
+        print(f"  Driver {DRIVER['id']}: {action}")
+
+        # Credentials
+        for cred_data in CREDENTIALS:
+            action, _ = upsert(db, UserCredential, cred_data)
+            print(f"  Credential {cred_data['id']} ({cred_data['email']}): {action}")
 
         db.commit()
         print("\nSeed complete.")

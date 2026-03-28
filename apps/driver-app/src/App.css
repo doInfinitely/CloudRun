@@ -714,6 +714,248 @@ body {
   color: var(--text-secondary);
 }
 
+/* ========== Login Page ========== */
+.login-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+  padding: 20px;
+  z-index: 5000;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 40px 28px;
+  text-align: center;
+}
+
+.login-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent-blue);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.login-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.login-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent-blue);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.login-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-error {
+  color: var(--accent-red);
+  font-size: 13px;
+  text-align: left;
+}
+
+.login-toggle {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.login-link {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ========== Onboarding Wizard ========== */
+.onboarding-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+  padding: 20px;
+  z-index: 5000;
+  overflow-y: auto;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 40px 28px;
+  text-align: center;
+  margin: auto;
+}
+
+.onboarding-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.onboarding-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.onboarding-steps {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.onboarding-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.onboarding-step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-step-dot.active {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.onboarding-step-dot.done {
+  background: var(--accent-green);
+  color: #fff;
+}
+
+.onboarding-step-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.onboarding-step-label.active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.onboarding-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.onboarding-field-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: -4px;
+}
+
+.onboarding-doc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: var(--bg-card-hover);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.onboarding-doc-badge.done {
+  color: var(--accent-green);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.onboarding-upload-label {
+  font-size: 13px;
+  color: var(--accent-blue);
+  cursor: pointer;
+  padding: 4px 10px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 6px;
+}
+
+.onboarding-stripe-done {
+  text-align: center;
+  color: var(--accent-green);
+  font-weight: 700;
+  font-size: 16px;
+  padding: 12px 0;
+}
+
+.onboarding-stripe-desc {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 8px 0;
+}
+
 /* ========== Compliance ========== */
 .task-panel-compliance-note {
   font-size: 13px;
