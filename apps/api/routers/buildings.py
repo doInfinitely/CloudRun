@@ -85,30 +85,38 @@ def get_buildings(
 ):
     key = _grid_key(lat, lng)
 
-    # Check DB cache
-    cached = db.get(BuildingCache, key)
-    if cached:
-        age = datetime.now(timezone.utc) - cached.fetched_at.replace(tzinfo=timezone.utc)
-        if age < CACHE_TTL:
-            return {"buildings": cached.data_json, "cached": True}
+    # Check DB cache (gracefully handle missing table before migration)
+    cached = None
+    try:
+        cached = db.get(BuildingCache, key)
+        if cached:
+            age = datetime.now(timezone.utc) - cached.fetched_at.replace(tzinfo=timezone.utc)
+            if age < CACHE_TTL:
+                return {"buildings": cached.data_json, "cached": True}
+    except Exception as e:
+        log.warning("building_cache table not ready: %s", e)
+        db.rollback()
 
     # Fetch from Overpass
     try:
         buildings = _fetch_overpass(lat, lng)
     except Exception as e:
         log.error("Overpass fetch failed: %s", e)
-        # Return stale cache if available
         if cached:
             return {"buildings": cached.data_json, "cached": True}
         return {"buildings": [], "cached": False}
 
-    # Upsert into DB
-    if cached:
-        cached.data_json = buildings
-        cached.fetched_at = datetime.now(timezone.utc)
-    else:
-        cached = BuildingCache(grid_key=key, data_json=buildings)
-        db.add(cached)
-    db.commit()
+    # Upsert into DB (best-effort)
+    try:
+        if cached:
+            cached.data_json = buildings
+            cached.fetched_at = datetime.now(timezone.utc)
+        else:
+            cached = BuildingCache(grid_key=key, data_json=buildings)
+            db.add(cached)
+        db.commit()
+    except Exception as e:
+        log.warning("Failed to cache buildings: %s", e)
+        db.rollback()
 
     return {"buildings": buildings, "cached": False}

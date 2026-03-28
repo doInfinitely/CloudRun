@@ -781,18 +781,18 @@ export default function DriverMap({
   }, [delivery, frustumFromZoom]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div ref={containerRef} className="driver-map" />
+    <div className="driver-map">
+      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
       <button
         onClick={() => setBuildings3D(v => !v)}
         style={{
-          position: "absolute", bottom: 10, right: 10, zIndex: 10,
+          position: "absolute", top: 64, right: 12, zIndex: 1001,
           background: "#0a0e17CC",
           border: "1px solid #3b82f666",
-          borderRadius: 6, padding: "4px 8px", cursor: "pointer",
+          borderRadius: 6, padding: "5px 10px", cursor: "pointer",
           color: buildings3D ? "#3b82f6" : "#8899aa",
           fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-          fontSize: 11, fontWeight: 700, letterSpacing: 1, lineHeight: 1,
+          fontSize: 12, fontWeight: 700, letterSpacing: 1, lineHeight: 1,
           backdropFilter: "blur(4px)",
         }}
       >{buildings3D ? "3D" : "2D"}</button>
