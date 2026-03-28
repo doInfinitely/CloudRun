@@ -405,14 +405,14 @@ export function buildBuildingMesh(buildings, { fillColor, outlineColor, mode = "
 
     if (mode === "extruded") {
       const height = b.h || 8;
-      const worldHeight = height * 0.05;
+      const worldHeight = height * 0.02;
       const geo = _extrudeBuilding(worldPts, worldHeight);
       if (geo) fillGeos.push(geo);
 
       // Outline at base
       const outlinePts = worldPts.map(p => new THREE.Vector3(p.x, p.y, 0.004));
       if (outlinePts.length > 0) outlinePts.push(outlinePts[0].clone());
-      const outGeo = buildRibbonGeometry(outlinePts, 0.35);
+      const outGeo = buildRibbonGeometry(outlinePts, 0.12);
       if (outGeo.attributes.position) outlineGeos.push(outGeo);
     } else {
       // Flat mode
@@ -422,7 +422,7 @@ export function buildBuildingMesh(buildings, { fillColor, outlineColor, mode = "
       // Outline ribbon
       const outlinePts = worldPts.map(p => new THREE.Vector3(p.x, p.y, 0.0015));
       if (outlinePts.length > 0) outlinePts.push(outlinePts[0].clone());
-      const outGeo = buildRibbonGeometry(outlinePts, 0.15);
+      const outGeo = buildRibbonGeometry(outlinePts, 0.06);
       if (outGeo.attributes.position) outlineGeos.push(outGeo);
     }
   }

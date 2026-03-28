@@ -5,20 +5,20 @@ import { buildRoadMeshes, buildRibbonGeometry, buildBuildingMesh } from "../serv
 
 // ── Road color tiers ──
 const ROAD_COLORS = {
-  motorway: "#8899aa",
-  motorway_link: "#8899aa",
-  trunk: "#778899",
-  trunk_link: "#7788aa",
-  primary: "#667788",
-  primary_link: "#667788",
-  secondary: "#556677",
-  secondary_link: "#556677",
-  tertiary: "#445566",
-  tertiary_link: "#445566",
-  residential: "#334455",
-  living_street: "#334455",
-  unclassified: "#334455",
-  service: "#2a3a4a",
+  motorway: "#8ab4d4",
+  motorway_link: "#8ab4d4",
+  trunk: "#7aa4c4",
+  trunk_link: "#7aa4c4",
+  primary: "#6a94b4",
+  primary_link: "#6a94b4",
+  secondary: "#5a84a4",
+  secondary_link: "#5a84a4",
+  tertiary: "#4a7494",
+  tertiary_link: "#4a7494",
+  residential: "#3a6484",
+  living_street: "#3a6484",
+  unclassified: "#3a6484",
+  service: "#2a5474",
 };
 
 const ROAD_WIDTHS = {
@@ -295,8 +295,8 @@ export default function TrackingMap({ store, delivery, driverPosition, routeGeom
 
     const mode = buildings3DRef.current ? "extruded" : "flat";
     s.buildingMesh = buildBuildingMesh(s._buildingData, {
-      fillColor: "#1a2233",
-      outlineColor: "#2a3a55",
+      fillColor: "#0e1320",
+      outlineColor: "#151c2a",
       mode,
       lonToX,
       latToY,
