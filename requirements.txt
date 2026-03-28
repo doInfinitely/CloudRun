@@ -14,3 +14,4 @@ orjson>=3.9
 python-multipart>=0.0.6
 PyJWT>=2.8
 bcrypt>=4.0
+requests>=2.31
