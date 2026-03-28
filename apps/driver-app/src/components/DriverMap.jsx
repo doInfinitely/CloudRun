@@ -574,8 +574,8 @@ export default function DriverMap({
 
     const mode = buildings3DRef.current ? "extruded" : "flat";
     s.buildingMesh = buildBuildingMesh(s._buildingData, {
-      fillColor: "#0e1320",
-      outlineColor: "#151c2a",
+      fillColor: "#182538",
+      outlineColor: "#243448",
       mode,
       lonToX,
       latToY,
