@@ -152,7 +152,7 @@ export function buildRoadMeshes(roads, { colors, lonToX, latToY }) {
 
   for (const way of roads) {
     const fillColor = colors[way.h] || colors.residential || "#334455";
-    const strokeColor = darkenColor(fillColor, 0.45);
+    const strokeColor = darkenColor(fillColor, 0.3);
     const w = HIGHWAY_WIDTHS[way.h] || 0.5;
 
     const points = way.p.map(([lon, lat]) => new THREE.Vector3(lonToX(lon), -latToY(lat), 0));
@@ -165,9 +165,9 @@ export function buildRoadMeshes(roads, { colors, lonToX, latToY }) {
       fillGeos.push({ geo: fillGeo, color: fillColor });
     }
 
-    // Stroke (z = 0, behind fill)
+    // Stroke (z = 0, behind fill) — thin edge, not a wide border
     const strokePts = points.map(p => new THREE.Vector3(p.x, p.y, 0));
-    const strokeGeo = buildRibbonGeometry(strokePts, w * 1.6);
+    const strokeGeo = buildRibbonGeometry(strokePts, w * 1.12);
     if (strokeGeo.attributes.position) {
       strokeGeos.push({ geo: strokeGeo, color: strokeColor });
     }
