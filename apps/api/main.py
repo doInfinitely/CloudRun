@@ -7,7 +7,7 @@ from apps.api.middleware.auth import AuthMiddleware
 from apps.api.middleware.rate_limit import RateLimitMiddleware
 from apps.api.routers import health, orders, dossier, tasks, drivers, internal_expire
 from apps.api.routers import profile, vehicles, merchant, stores, customers
-from apps.api.routers import support, admin
+from apps.api.routers import support, admin, auth, onboarding, buildings
 
 app = FastAPI(
     title="CloudRun Marketplace API",
@@ -47,6 +47,9 @@ app.include_router(stores.router, prefix="/v1")
 app.include_router(customers.router, prefix="/v1")
 app.include_router(support.router, prefix="/v1")
 app.include_router(admin.router, prefix="/v1")
+app.include_router(auth.router, prefix="/v1")
+app.include_router(onboarding.router, prefix="/v1")
+app.include_router(buildings.router, prefix="/v1")
 
 # Serve uploaded files
 uploads_dir = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")

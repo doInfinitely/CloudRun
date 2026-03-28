@@ -1,6 +1,7 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import * as THREE from "three";
-import { lonToX, latToY, WORLD_SCALE, getRoadsNear } from "../services/roads.js";
+import { lonToX, latToY, WORLD_SCALE, getRoadsNear, getBuildingsNear } from "../services/roads.js";
+import { buildRoadMeshes, buildRibbonGeometry, buildBuildingMesh } from "../services/road-mesh.js";
 
 // Car marker images (all face right in the source image)
 import carImg1 from "../assets/car-markers/cloudrun_car_marker_masked_1.png";
@@ -112,6 +113,9 @@ export default function DriverMap({
   routeGeometry,
 }) {
   const containerRef = useRef(null);
+  const [buildings3D, setBuildings3D] = useState(false);
+  const buildings3DRef = useRef(buildings3D);
+  buildings3DRef.current = buildings3D;
   const stateRef = useRef({
     renderer: null,
     scene: null,
@@ -130,6 +134,11 @@ export default function DriverMap({
     // Marker sprites
     pickupSprite: null,
     deliverySprite: null,
+    // Road ribbon meshes
+    roadMeshes: null,
+    // Building meshes
+    buildingMesh: null,
+    buildingGroup: null,
     // Tracking
     lastRoadFetchPos: null,
     mounted: true,
@@ -209,10 +218,12 @@ export default function DriverMap({
 
     // Groups for organized layering
     s.roadGroup = new THREE.Group();
+    s.buildingGroup = new THREE.Group();
     s.routeGroup = new THREE.Group();
     s.labelGroup = new THREE.Group();
     s.markerGroup = new THREE.Group();
     scene.add(s.roadGroup);
+    scene.add(s.buildingGroup);
     scene.add(s.routeGroup);
     scene.add(s.labelGroup);
     scene.add(s.markerGroup);
@@ -367,6 +378,12 @@ export default function DriverMap({
     if (!s.roadGroup) return;
 
     // Dispose old road meshes
+    if (s.roadMeshes) {
+      s.roadMeshes.dispose();
+      if (s.roadMeshes.strokeMesh.parent) s.roadGroup.remove(s.roadMeshes.strokeMesh);
+      if (s.roadMeshes.fillMesh.parent) s.roadGroup.remove(s.roadMeshes.fillMesh);
+      s.roadMeshes = null;
+    }
     while (s.roadGroup.children.length > 0) {
       const child = s.roadGroup.children[0];
       if (child.geometry) child.geometry.dispose();
@@ -374,21 +391,13 @@ export default function DriverMap({
       s.roadGroup.remove(child);
     }
 
-    for (const road of roads) {
-      const color = ROAD_COLORS[road.h] || ROAD_COLORS.residential;
-      const points = road.p.map(
-        ([lon, lat]) => new THREE.Vector3(lonToX(lon), -latToY(lat), 0)
-      );
-      if (points.length < 2) continue;
-
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const material = new THREE.LineBasicMaterial({
-        color,
-        linewidth: ROAD_WIDTHS[road.h] || 0.5,
-      });
-      const line = new THREE.Line(geometry, material);
-      s.roadGroup.add(line);
-    }
+    s.roadMeshes = buildRoadMeshes(roads, {
+      colors: ROAD_COLORS,
+      lonToX,
+      latToY,
+    });
+    s.roadGroup.add(s.roadMeshes.strokeMesh);
+    s.roadGroup.add(s.roadMeshes.fillMesh);
   }, []);
 
   // ── Render street + place labels ──
@@ -445,6 +454,7 @@ export default function DriverMap({
       mesh.position.set(pts[mid].x, pts[mid].y, 0.005);
       mesh.rotation.z = angle;
       mesh.userData.baseAngle = angle;
+      mesh.renderOrder = 10;
       s.labelGroup.add(mesh);
     }
 
@@ -470,6 +480,7 @@ export default function DriverMap({
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(lonToX(place.lon), -latToY(place.lat), 0.015);
       mesh.userData.isPlaceLabel = true;
+      mesh.renderOrder = 11;
       s.labelGroup.add(mesh);
     }
   }, []);
@@ -510,6 +521,17 @@ export default function DriverMap({
       renderRoads(roads);
       renderLabels(roads, places);
       s.lastRoadFetchPos = [position.lat, position.lng];
+
+      // Fetch buildings (delayed to avoid Overpass rate limiting)
+      if (s.zoom >= 15) {
+        setTimeout(async () => {
+          if (cancelled || !s.mounted) return;
+          const buildings = await getBuildingsNear(position.lat, position.lng);
+          if (cancelled || !s.mounted || !buildings?.length) return;
+          s._buildingData = buildings;
+          _renderBuildings(s);
+        }, 1500);
+      }
     };
 
     fetchAndRender();
@@ -518,6 +540,36 @@ export default function DriverMap({
       cancelled = true;
     };
   }, [position, renderRoads, renderLabels]);
+
+  // ── Rebuild buildings when 2D/3D toggle changes ──
+  useEffect(() => {
+    const s = stateRef.current;
+    if (!s?.scene || !s._buildingData?.length) return;
+    _renderBuildings(s);
+  }, [buildings3D]);
+
+  function _renderBuildings(s) {
+    // Dispose old
+    if (s.buildingMesh) {
+      s.buildingMesh.dispose();
+      if (s.buildingMesh.mesh?.parent) s.buildingGroup.remove(s.buildingMesh.mesh);
+      if (s.buildingMesh.outlineMesh?.parent) s.buildingGroup.remove(s.buildingMesh.outlineMesh);
+      if (s.buildingMesh.light?.parent) s.scene.remove(s.buildingMesh.light);
+      s.buildingMesh = null;
+    }
+
+    const mode = buildings3DRef.current ? "extruded" : "flat";
+    s.buildingMesh = buildBuildingMesh(s._buildingData, {
+      fillColor: "#1a2233",
+      outlineColor: "#2a3a55",
+      mode,
+      lonToX,
+      latToY,
+    });
+    if (s.buildingMesh.mesh) s.buildingGroup.add(s.buildingMesh.mesh);
+    if (s.buildingMesh.outlineMesh) s.buildingGroup.add(s.buildingMesh.outlineMesh);
+    if (s.buildingMesh.light) s.scene.add(s.buildingMesh.light);
+  }
 
   // ── Route polyline ──
   useEffect(() => {
@@ -538,13 +590,14 @@ export default function DriverMap({
       ([lat, lng]) => new THREE.Vector3(lonToX(lng), -latToY(lat), 0.01)
     );
 
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({
+    const routeGeo = buildRibbonGeometry(points, 1.2);
+    const routeMat = new THREE.MeshBasicMaterial({
       color: ROUTE_COLOR,
-      linewidth: 2,
+      side: THREE.DoubleSide,
     });
-    const line = new THREE.Line(geometry, material);
-    s.routeGroup.add(line);
+    const routeMesh = new THREE.Mesh(routeGeo, routeMat);
+    routeMesh.renderOrder = 3;
+    s.routeGroup.add(routeMesh);
 
     // Fit camera to route bounds — only when user hasn't manually zoomed
     if (points.length > 0 && s.camera && !s.userZoomed) {
@@ -727,5 +780,22 @@ export default function DriverMap({
     }
   }, [delivery, frustumFromZoom]);
 
-  return <div ref={containerRef} className="driver-map" />;
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div ref={containerRef} className="driver-map" />
+      <button
+        onClick={() => setBuildings3D(v => !v)}
+        style={{
+          position: "absolute", bottom: 10, right: 10, zIndex: 10,
+          background: "#0a0e17CC",
+          border: "1px solid #3b82f666",
+          borderRadius: 6, padding: "4px 8px", cursor: "pointer",
+          color: buildings3D ? "#3b82f6" : "#8899aa",
+          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize: 11, fontWeight: 700, letterSpacing: 1, lineHeight: 1,
+          backdropFilter: "blur(4px)",
+        }}
+      >{buildings3D ? "3D" : "2D"}</button>
+    </div>
+  );
 }

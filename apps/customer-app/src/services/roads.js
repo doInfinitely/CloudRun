@@ -69,6 +69,39 @@ function haversineM(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ── Building data (via CloudRun API with server-side cache) ──
+
+const _buildingCache = new Map();
+let _buildingInflight = null;
+
+/**
+ * Fetch buildings near a position via CloudRun API (which caches Overpass results in DB).
+ * Returns [{p: [[lon,lat]...], h?: height, t?: type}]
+ */
+export async function getBuildingsNear(lat, lng) {
+  const key = gridKey(lat, lng);
+  const cached = _buildingCache.get(key);
+  if (cached && Date.now() - cached.t < CACHE_TTL) return cached.data;
+
+  if (_buildingInflight) return _buildingInflight;
+
+  _buildingInflight = (async () => {
+    try {
+      const resp = await fetch(`/v1/buildings?lat=${lat}&lng=${lng}`);
+      if (!resp.ok) return cached?.data || [];
+      const json = await resp.json();
+      const buildings = json.buildings || [];
+      _buildingCache.set(key, { data: buildings, t: Date.now() });
+      return buildings;
+    } catch {
+      return cached?.data || [];
+    } finally {
+      _buildingInflight = null;
+    }
+  })();
+  return _buildingInflight;
+}
+
 /**
  * Fetch roads near a position from Overpass API.
  * Returns array of { h: highway_type, p: [[lon,lat],...], n: name }
