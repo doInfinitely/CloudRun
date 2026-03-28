@@ -452,7 +452,7 @@ export default function DriverMap({
       const p2 = pts[Math.min(pts.length - 1, mid + 1)];
       const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
-      const h = 0.25;
+      const h = 0.8;
       const { tex, aspect } = createTextTexture(road.n, {
         fontSize: 48,
         color: "#7799bb",
@@ -474,12 +474,12 @@ export default function DriverMap({
 
     // Place labels (city, town, village, suburb, etc.)
     const PLACE_CONFIG = {
-      city:          { height: 0.8,  fontSize: 72, color: "#bbccdd", fontWeight: "700" },
-      town:          { height: 0.6,  fontSize: 64, color: "#aabbcc", fontWeight: "700" },
-      village:       { height: 0.45, fontSize: 56, color: "#99aabb", fontWeight: "600" },
-      suburb:        { height: 0.4,  fontSize: 48, color: "#8899aa", fontWeight: "600" },
-      hamlet:        { height: 0.35, fontSize: 48, color: "#8899aa", fontWeight: "600" },
-      neighbourhood: { height: 0.3,  fontSize: 40, color: "#778899", fontWeight: "600" },
+      city:          { height: 2.4,  fontSize: 72, color: "#bbccdd", fontWeight: "700" },
+      town:          { height: 1.8,  fontSize: 64, color: "#aabbcc", fontWeight: "700" },
+      village:       { height: 1.4,  fontSize: 56, color: "#99aabb", fontWeight: "600" },
+      suburb:        { height: 1.2,  fontSize: 48, color: "#8899aa", fontWeight: "600" },
+      hamlet:        { height: 1.0,  fontSize: 48, color: "#8899aa", fontWeight: "600" },
+      neighbourhood: { height: 0.9,  fontSize: 40, color: "#778899", fontWeight: "600" },
     };
 
     for (const place of places) {
