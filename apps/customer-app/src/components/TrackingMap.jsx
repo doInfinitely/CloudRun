@@ -45,6 +45,10 @@ const DEFAULT_ZOOM = 14;
 const MIN_ZOOM = 12;
 const MAX_ZOOM = 19;
 
+// Tilted camera (like TravelPal) — 55° from horizontal
+const CAM_ANGLE = (55 * Math.PI) / 180;
+const CAM_DIST = 200;
+
 // ── Emoji marker canvas texture ──
 function createMarkerTexture(emoji, bgColor, size = 128) {
   const canvas = document.createElement("canvas");
@@ -140,10 +144,11 @@ export default function TrackingMap({ store, delivery, driverPosition, routeGeom
       (frustum * aspect) / 2,
       frustum / 2,
       -frustum / 2,
-      0.1,
-      100
+      1,
+      1000
     );
-    camera.position.set(0, 0, 10);
+    // Tilted camera — 55° from horizontal, looking from the south
+    camera.position.set(0, -CAM_DIST * Math.cos(CAM_ANGLE), CAM_DIST * Math.sin(CAM_ANGLE));
     camera.lookAt(0, 0, 0);
     s.camera = camera;
 
@@ -363,8 +368,12 @@ export default function TrackingMap({ store, delivery, driverPosition, routeGeom
       updateFrustum();
     }
 
-    s.camera.position.x = cx;
-    s.camera.position.y = cy;
+    s.camera.position.set(
+      cx,
+      cy - CAM_DIST * Math.cos(CAM_ANGLE),
+      CAM_DIST * Math.sin(CAM_ANGLE)
+    );
+    s.camera.lookAt(cx, cy, 0);
   }, [store, delivery, driverPosition, updateFrustum]);
 
   // ── Store marker ──

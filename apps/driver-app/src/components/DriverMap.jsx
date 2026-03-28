@@ -57,6 +57,10 @@ const DEFAULT_ZOOM = 16;
 const MIN_ZOOM = 12;
 const MAX_ZOOM = 19;
 
+// Tilted camera (like TravelPal) — 55° from horizontal
+const CAM_ANGLE = (55 * Math.PI) / 180;
+const CAM_DIST = 200;
+
 // ── Emoji marker canvas texture ──
 function createMarkerTexture(emoji, bgColor, size = 128) {
   const canvas = document.createElement("canvas");
@@ -148,6 +152,8 @@ export default function DriverMap({
     targetX: null,
     targetY: null,
     targetRotation: 0,
+    smoothX: undefined,
+    smoothY: undefined,
     // User interaction tracking
     userZoomed: false,
   });
@@ -187,6 +193,9 @@ export default function DriverMap({
     s.lastRoadFetchPos = null;
     s.targetX = null;
     s.targetY = null;
+    s.smoothX = undefined;
+    s.smoothY = undefined;
+    s.targetRotation = 0;
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -208,11 +217,11 @@ export default function DriverMap({
       (frustum * aspect) / 2,
       frustum / 2,
       -frustum / 2,
-      0.1,
-      100
+      1,
+      1000
     );
-    // Look straight down (camera at Z=10, looking at Z=0 plane)
-    camera.position.set(0, 0, 10);
+    // Tilted camera — 55° from horizontal, looking from behind the driver
+    camera.position.set(0, -CAM_DIST * Math.cos(CAM_ANGLE), CAM_DIST * Math.sin(CAM_ANGLE));
     camera.lookAt(0, 0, 0);
     s.camera = camera;
 
@@ -242,7 +251,7 @@ export default function DriverMap({
 
       // Keep labels readable regardless of camera rotation
       if (s.labelGroup) {
-        const camRot = camera.rotation.z;
+        const camRot = -(s.targetRotation || 0);
         for (const child of s.labelGroup.children) {
           if (child.userData.isPlaceLabel) {
             // Place labels stay horizontal on screen
@@ -259,14 +268,19 @@ export default function DriverMap({
         }
       }
 
-      // Smooth camera follow (move camera, not scene)
+      // Smooth camera follow with tilt + heading orbit
       if (s.targetX !== null && s.targetY !== null) {
-        const dx = s.targetX - camera.position.x;
-        const dy = s.targetY - camera.position.y;
-        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
-          camera.position.x += dx * 0.1;
-          camera.position.y += dy * 0.1;
-        }
+        if (s.smoothX === undefined) { s.smoothX = s.targetX; s.smoothY = s.targetY; }
+        s.smoothX += (s.targetX - s.smoothX) * 0.1;
+        s.smoothY += (s.targetY - s.smoothY) * 0.1;
+        const hr = s.targetRotation || 0;
+        camera.position.set(
+          s.smoothX - Math.sin(hr) * CAM_DIST * Math.cos(CAM_ANGLE),
+          s.smoothY - Math.cos(hr) * CAM_DIST * Math.cos(CAM_ANGLE),
+          CAM_DIST * Math.sin(CAM_ANGLE)
+        );
+        camera.up.set(Math.sin(hr), Math.cos(hr), 0);
+        camera.lookAt(s.smoothX, s.smoothY, 0);
       }
 
       renderer.render(scene, camera);
@@ -301,8 +315,8 @@ export default function DriverMap({
       s.userZoomed = false;
       updateFrustum();
       if (s.targetX !== null) {
-        camera.position.x = s.targetX;
-        camera.position.y = s.targetY;
+        s.smoothX = s.targetX;
+        s.smoothY = s.targetY;
       }
     };
 
@@ -624,8 +638,8 @@ export default function DriverMap({
         updateFrustum();
       }
 
-      s.camera.position.x = cx;
-      s.camera.position.y = cy;
+      s.smoothX = cx;
+      s.smoothY = cy;
       s.targetX = cx;
       s.targetY = cy;
     }
@@ -709,21 +723,19 @@ export default function DriverMap({
 
     // Camera follow — snap on first position, lerp after
     if (s.targetX === null) {
-      s.camera.position.x = wx;
-      s.camera.position.y = wy;
+      s.smoothX = wx;
+      s.smoothY = wy;
     }
     s.targetX = wx;
     s.targetY = wy;
   }, [position, frustumFromZoom]);
 
-  // ── Heading rotation ──
+  // ── Heading rotation (camera orbits around driver) ──
   useEffect(() => {
     const s = stateRef.current;
-    if (!s.camera || heading == null) return;
-    // Only rotate when speed > ~1m/s (heading is unreliable when stationary)
+    if (heading == null) return;
     if (position?.speed != null && position.speed < 1) return;
-    // Rotate camera around its viewing axis (Z) so forward = up
-    s.camera.rotation.z = (-heading * Math.PI) / 180;
+    s.targetRotation = (heading * Math.PI) / 180;
   }, [heading, position?.speed]);
 
   // ── Pickup marker ──
